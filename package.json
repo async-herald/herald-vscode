@@ -1,0 +1,120 @@
+{
+  "name": "async-herald",
+  "displayName": "Async Herald",
+  "description": "Analysez la qualité de votre code avec Async Herald directement depuis VSCode",
+  "version": "0.0.1",
+  "publisher": "async",
+  "engines": {
+    "vscode": "^1.107.0"
+  },
+  "categories": [
+    "Linters",
+    "Programming Languages"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/itsasync/async-herald"
+  },
+  "activationEvents": [
+    "*"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "secondarySidebar": [
+        {
+          "id": "async-herald-secondary",
+          "title": "Async Herald",
+          "icon": "media/aile.svg"
+        }
+      ]
+    },
+    "views": {
+      "async-herald-secondary": [
+        {
+          "id": "asyncHeraldView",
+          "name": "Async Herald",
+          "icon": "media/aile.svg",
+          "type": "webview",
+          "when": "asyncHerald.authenticated"
+        },
+        {
+          "id": "asyncHeraldWelcome",
+          "name": "Async Herald",
+          "icon": "media/aile.svg",
+          "when": "!asyncHerald.authenticated"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "asyncHeraldWelcome",
+        "contents": "Bienvenue sur Async Herald !\n\nAnalysez la qualité de votre code en quelques secondes.\n\n[$(plug) Lier mon compte](command:async-herald.connect)\n\n[$(key) Entrer un token](command:async-herald.setToken)"
+      }
+    ],
+    "commands": [
+      {
+        "command": "async-herald.connect",
+        "title": "Async Herald : Lier mon compte",
+        "icon": "${account}"
+      },
+      {
+        "command": "async-herald.disconnect",
+        "title": "Async Herald : Se déconnecter",
+        "icon": "$(sign-out)"
+      },
+      {
+        "command": "async-herald.setToken",
+        "title": "Async Herald : Définir le token manuellement",
+        "icon": "$(key)"
+      },
+      {
+        "command": "async-herald.analyze",
+        "title": "Async Herald : Analyser le projet",
+        "icon": "media/aile.svg"
+      },
+      {
+        "command": "async-herald.openReport",
+        "title": "Async Herald : Voir le rapport complet",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "async-herald.menu",
+        "title": "Async Herald : Ouvrir le menu",
+        "icon": "media/aile.svg"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "async-herald.menu",
+          "group": "navigation",
+          "when": "resourceLangId != ''"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test",
+    "package": "vsce package",
+    "install-extension": "code --install-extension async-herald-0.0.1.vsix"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.107.0",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.39.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.48.1"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  }
+}
