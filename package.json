@@ -2,8 +2,9 @@
   "name": "async-herald",
   "displayName": "Async Herald",
   "description": "Analysez la qualité de votre code avec Async Herald directement depuis VSCode",
-  "version": "0.0.1",
+  "version": "0.0.11",
   "publisher": "async",
+  "icon": "media/icon.png",
   "engines": {
     "vscode": "^1.107.0"
   },
