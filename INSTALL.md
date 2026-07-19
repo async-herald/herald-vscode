@@ -8,7 +8,7 @@ Cette méthode est la plus simple pour tester l'extension.
 
 1. **Ouvrir le projet dans VSCode**
    ```bash
-   cd /Users/graven/Developpement/Async/folder/async-herald
+   cd herald-vscode
    code .
    ```
 
@@ -62,13 +62,13 @@ npm install -g @vscode/vsce
    vsce package
    ```
 
-   Cela crée un fichier `async-herald-0.0.1.vsix`
+   Cela crée un fichier `async-herald-0.0.12.vsix` (le numéro suit la version du `package.json`)
 
 3. **Installer le .vsix dans VSCode**
 
    **Option A : Via la ligne de commande**
    ```bash
-   code --install-extension async-herald-0.0.1.vsix
+   code --install-extension async-herald-0.0.12.vsix
    ```
 
    **Option B : Via l'interface VSCode**
@@ -76,7 +76,7 @@ npm install -g @vscode/vsce
    2. Allez dans Extensions (`Cmd/Ctrl + Shift + X`)
    3. Cliquez sur les `...` en haut à droite
    4. Sélectionnez `Install from VSIX...`
-   5. Choisissez le fichier `async-herald-0.0.1.vsix`
+   5. Choisissez le fichier `async-herald-0.0.12.vsix`
 
 4. **Redémarrer VSCode**
    ```bash
@@ -124,6 +124,7 @@ Si vous développez activement l'extension, utilisez le mode watch :
    - Tapez "Async Herald"
    - Vous devriez voir toutes les commandes disponibles :
      - Async Herald : Lier mon compte
+     - Async Herald : Définir le token manuellement
      - Async Herald : Se déconnecter
      - Async Herald : Analyser le projet
      - Async Herald : Voir le rapport complet

@@ -1,286 +1,240 @@
 # Interface utilisateur - Panneau Herald
 
-Ce document décrit l'interface du panneau Herald dans la sidebar VSCode.
+Ce document décrit l'interface du panneau **Async Herald**, une webview affichée dans la barre latérale secondaire de VSCode.
 
-## 🎨 Design moderne
+## Vue d'ensemble
 
-L'interface utilise :
-- **Emojis** pour une identification rapide
-- **Couleurs thématiques** pour guider l'utilisateur
-- **Sections collapsibles** pour une meilleure organisation
-- **Badges descriptifs** (👈) pour indiquer les actions recommandées
+Le panneau est une webview HTML personnalisée. Une fois connecté, il s'organise en **3 onglets** :
 
-## États du panneau
+- **Analyse** — score, note et problèmes détectés
+- **Usage** — plan, quota et fichiers analysés
+- **Config** — édition de `herald.config.json`
 
-### État 1 : Non connecté
+Tant que l'utilisateur n'est pas authentifié, une vue d'accueil (`viewsWelcome`) invite à se connecter.
+
+---
+
+## État non connecté
+
+VSCode affiche la vue d'accueil déclarée dans `package.json` :
 
 ```
-▼ ⚡ Async Herald
-  └── ℹ️  Bienvenue sur Async Herald !
-      └── Analysez et améliorez votre code
+Bienvenue sur Async Herald !
 
-▼ 🔐 Connexion
-  ├── 🔗 Lier mon compte Async
-  │   └── ⭐ Recommandé • Rapide et sécurisé
-  └── 🔑 Définir un token manuel
-      └── Pour utilisateurs avancés
+Analysez la qualité de votre code en quelques secondes.
 
-▼ ✨ Fonctionnalités
-  ├── 📊 Score de qualité
-  │   └── Note globale de 0 à 100
-  ├── 🐛 Détection intelligente
-  │   └── Bugs et anti-patterns
-  ├── 📈 Rapports détaillés
-  │   └── Dashboard web interactif
-  ├── ⚡ Analyse rapide
-  │   └── Résultats en quelques secondes
-  └── 🎯 Conseils personnalisés
-      └── Recommandations adaptées
-
-▶ 📚 Ressources
-  ├── 📖 Documentation
-  ├── 💬 Support
-  ├── 🐛 Signaler un bug
-  └── ⭐ GitHub
+[🔌 Lier mon compte]
+[🔑 Entrer un token]
 ```
 
 **Actions disponibles** :
-- Cliquer sur "🔗 Lier mon compte Async" → Lance le flow OAuth (recommandé)
-- Cliquer sur "🔑 Définir un token manuel" → Saisie manuelle du token
+- **Lier mon compte** → `async-herald.connect` (flow OAuth, recommandé)
+- **Entrer un token** → `async-herald.setToken` (token manuel)
 
-### État 2 : Connecté (sans analyse)
+---
 
-```
-▼ 👤 Profil
-  ├── user@example.com
-  │   └── Connecté
-  └── 🚪 Se déconnecter
+## Onglet « Analyse »
 
-▼ 🎯 Actions
-  └── ▶️ Analyser le projet
-      └── Lancer une nouvelle analyse
+C'est l'onglet par défaut une fois connecté.
 
-▶ 📚 Ressources
-  └── ...
-```
-
-**Actions disponibles** :
-- Cliquer sur "🚪 Se déconnecter" → Déconnexion
-- Cliquer sur "▶️ Analyser le projet" → Lance l'analyse
-
-### État 3 : Connecté (avec résultats)
-
-```
-▼ 👤 Profil
-  ├── user@example.com
-  │   └── Connecté
-  └── 🚪 Se déconnecter
-
-▼ 🎯 Actions
-  └── ▶️ Analyser le projet
-      └── Lancer une nouvelle analyse
-
-▼ 📊 Dernière analyse (il y a 5 min)
-  ├── ▼ ℹ️  Résumé
-  │   ├── 🌟 Score global
-  │   │   └── 85/100 • Grade B+
-  │   └── ✅ Problèmes détectés
-  │       └── 12 problème(s)
-  └── 📄 Voir le rapport complet
-      └── Ouvrir dans le navigateur
-
-▶ 📚 Ressources
-  └── ...
-```
-
-**Actions disponibles** :
-- Cliquer sur "▶️ Analyser le projet" → Lance une nouvelle analyse
-- Cliquer sur "📄 Voir le rapport complet" → Ouvre le navigateur
-
-## Codes couleur et emojis
-
-### Scores
-
-| Score | Emoji | Couleur | Icône |
-|-------|-------|---------|-------|
-| >= 90 | 🏆 | Vert | `pass` |
-| >= 80 | 🌟 | Vert | `pass` |
-| >= 70 | 👍 | Orange | `warning` |
-| >= 60 | ⚠️ | Orange | `warning` |
-| < 60 | 🔴 | Rouge | `error` |
-
-### Statuts
-
-| État | Couleur | Icône |
-|------|---------|-------|
-| Connecté | Vert (`charts.green`) | `verified-filled` |
-| Non connecté | Bleu (`charts.blue`) | `circuit-board` |
-| Problèmes détectés | Orange (`charts.orange`) | `warning` |
-| Aucun problème | Vert (`charts.green`) | `pass` |
+### En-tête
+- Icône de déconnexion (survol : « Se déconnecter »)
+- Barre d'onglets : **Analyse** · Usage · Config
 
 ### Actions
+- **Devenir Pro** — ouvre `herald.codes/plans`
+- **Analyser le projet** — lance `async-herald.analyze` (désactivé pendant une analyse en cours)
 
-| Action | Couleur | Icône |
-|--------|---------|-------|
-| Lier compte (OAuth) | Vert (`charts.green`) | `link` |
-| Token manuel | Orange (`charts.orange`) | `key` |
-| Analyser | Bleu (`charts.blue`) | `play-circle` |
-| Se déconnecter | Rouge (`charts.red`) | `sign-out` |
-| Ouvrir rapport | Bleu (`charts.blue`) | `link-external` |
+### Résultats d'analyse
+Après une analyse :
+- **Score global** sur 100 et **note** (A ≥ 90, B ≥ 80, C ≥ 70, D ≥ 60, sinon F)
+- Nombre de **problèmes détectés** et **lignes analysées**
+- Problèmes regroupés par **famille Herald**, chaque catégorie étant repliable
+- Chaque problème affiche sa **sévérité** (critical / warning / info) et sa **localisation cliquable** : un clic ouvre le fichier à la ligne/colonne exacte
+
+### Rapport
+- **Voir le rapport complet** — ouvre `herald.codes/reports/{reportId}` dans le navigateur
+- **Télécharger le rapport** — export PDF / Markdown (comptes Pro ; sinon renvoie vers la page Pro)
+
+---
+
+## Les 6 familles Herald
+
+Les problèmes sont regroupés par « héraut », chacun couvrant une dimension :
+
+| Famille | Libellé | Couleur | Rôle |
+|---------|---------|---------|------|
+| `auriel` | Auriel - Architecture | `#8B5CF6` | Analyse l'architecture du code |
+| `barachiel` | Barachiel - Performance | `#10B981` | Détecte les memory leaks et goulots |
+| `cassiel` | Cassiel - Patterns IA | `#F59E0B` | Identifie le code IA non optimisé |
+| `raziel` | Raziel - Documentation | `#06B6D4` | Vérifie la documentation et les tests |
+| `uriel` | Uriel - Sécurité | `#EF4444` | Traque les failles de sécurité |
+| `zadkiel` | Zadkiel - Qualité | `#3B82F6` | Inspecte la qualité globale du code |
+
+---
+
+## Onglet « Usage »
+
+Affiche les informations de compte et de quota (récupérées via l'API) :
+
+| Élément | Valeur |
+|---------|--------|
+| **Plan** | `⭐ Pro` ou `Gratuit` |
+| **Analyses restantes (jour)** | `Illimité` (Pro) ou le compte quotidien restant |
+| **Limite de débit** | Requêtes restantes + délai de réinitialisation |
+| **Fichiers à analyser** | Compteur, avec un bouton de rafraîchissement |
+
+Un bouton **Devenir Pro** est présent pour les comptes gratuits. Un raccourci permet d'ouvrir l'onglet **Config**.
+
+Le compteur de fichiers se met à jour automatiquement lorsque `herald.config.json` est créé, modifié ou supprimé.
+
+---
+
+## Onglet « Config »
+
+Gère le fichier `herald.config.json` à la racine du workspace.
+
+### Sans fichier de config
+- Bouton **Créer herald.config.json**
+- Exemple de configuration et description des options disponibles
+
+### Avec un fichier de config
+Formulaire d'édition :
+- **Fichiers à ignorer** (un par ligne, patterns glob : `*`, `**`, `*.ext`)
+- **Règles désactivées** (IDs séparés par des virgules ; lien « Voir les règles »)
+- **Lignes max par fichier** (`thresholds.maxFileLines`, défaut : 300)
+- **Sauvegarder** (écrit le fichier) et **Éditer JSON** (ouvre le fichier brut)
+
+### Structure du fichier
+
+```json
+{
+  "ignore": [
+    "docs",
+    "src/generated",
+    "**/*.min.js"
+  ],
+  "rules": {
+    "disable": ["eval-usage"]
+  },
+  "thresholds": {
+    "maxFileLines": 500
+  }
+}
+```
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `ignore` | `string[]` | Fichiers et dossiers à exclure (glob) |
+| `rules.disable` | `string[]` | IDs de règles à désactiver |
+| `thresholds.maxFileLines` | `number` | Nombre max de lignes par fichier (défaut : 300) |
+
+---
 
 ## Flow utilisateur complet
 
-### 1. Premier lancement
+### 1. Connexion
 
 ```
-1. User ouvre VSCode
+1. User ouvre le panneau Async Herald (barre latérale secondaire)
    ↓
-2. Extension s'active automatiquement
+2. Vue d'accueil : « Lier mon compte » ou « Entrer un token »
    ↓
-3. Panneau affiche la vue non connectée
-   ↓
-4. User voit les deux options de connexion
-   ↓
-5a. Option 1 : OAuth (recommandé)
-    - User clique "🔗 Lier mon compte Async"
-    - Navigateur s'ouvre → Page d'autorisation
+3a. OAuth (recommandé)
+    - Le navigateur s'ouvre sur herald.codes/herald/authorize
     - User se connecte et autorise
-    - Redirection vers VSCode avec token
-
-5b. Option 2 : Token manuel
-    - User clique "🔑 Définir un token manuel"
-    - Saisie du token dans une InputBox
-    - Validation du format (doit commencer par "herald_")
-    - Token stocké de manière sécurisée
+    - Redirection vers vscode://async.async-herald/auth/callback avec le token
+3b. Token manuel
+    - InputBox : le token doit commencer par « herald_ »
+    - Stockage sécurisé (context.secrets)
    ↓
-6. Panneau affiche "Connecté" + email
-7. Notification : "Token Herald enregistré avec succès !"
+4. Le panneau bascule sur la vue connectée (onglet Analyse)
 ```
 
-### 2. Analyse de code
+### 2. Analyse
 
 ```
-1. User clique "▶️ Analyser le projet"
+1. User clique « Analyser le projet »
    ↓
-2. Notification : "Analyse Herald en cours..."
+2. Notification de progression : « Collecte des fichiers... »
    ↓
-3. Extension collecte les fichiers (.js, .ts, .py, etc.)
+3. L'extension collecte les fichiers et les envoie à l'API Herald
    ↓
-4. Envoi à l'API Herald
+4. Réception des résultats → onglet Analyse mis à jour
    ↓
-5. Réception des résultats
+5. Notification : « Analyse terminée ! Score: XX/100 (Grade) - X problème(s) »
    ↓
-6. Panneau affiche la section "📊 Dernière analyse"
-   ↓
-7. Notification : "Analyse terminée ! Score: XX/100 (Grade) - X problème(s)"
+6. Usage et historique rafraîchis en arrière-plan
 ```
+
+En cas de **limite quotidienne atteinte**, une notification propose de **Devenir Pro** (ouvre `herald.codes/plans`).
 
 ### 3. Consultation du rapport
 
 ```
-1. User clique "📄 Voir le rapport complet"
+1. User clique « Voir le rapport complet »
    ↓
-2. Navigateur s'ouvre
-   ↓
-3. Page du rapport détaillé sur app.itsasync.fr
+2. Le navigateur ouvre herald.codes/reports/{reportId}
 ```
 
-## Icônes et thèmes
-
-| Élément | Icône VSCode | Couleur | Usage |
-|---------|--------------|---------|-------|
-| Profil | `account` | `charts.blue` | Section profil utilisateur |
-| Connecté | `verified-filled` | `charts.green` | Statut connecté |
-| Actions | `target` | `charts.purple` | Section actions |
-| Analyser | `play-circle` | `charts.blue` | Bouton d'analyse |
-| Dernière analyse | `graph-line` | `charts.purple` | Section résultats |
-| Score | `pass`/`warning`/`error` | Variable | Score selon valeur |
-| Problèmes | `warning`/`pass` | `charts.orange`/`charts.green` | Nombre de problèmes |
-| Horodatage | `history` | `charts.gray` | Temps écoulé |
-| Rapport | `link-external` | `charts.blue` | Ouvrir le rapport |
-| OAuth | `link` | `charts.green` | Connexion OAuth |
-| Token manuel | `key` | `charts.orange` | Token manuel |
-| Déconnexion | `sign-out` | `charts.red` | Se déconnecter |
-| Ressources | `book` | `charts.gray` | Section ressources |
-
-## Interactions
-
-### Clics
-
-Tous les boutons sont cliquables :
-- **🔗 Lier mon compte Async** → `async-herald.connect`
-- **🔑 Définir un token manuel** → `async-herald.setToken`
-- **🚪 Se déconnecter** → `async-herald.disconnect`
-- **▶️ Analyser le projet** → `async-herald.analyze`
-- **📄 Voir le rapport complet** → `async-herald.openReport`
-
-### Survol
-
-Les descriptions s'affichent au survol :
-- Email de l'utilisateur connecté
-- Grade à côté du score
-- Temps écoulé depuis la dernière analyse
-- Descriptions des fonctionnalités
-
-### Expansion/Collapse
-
-Sections collapsibles :
-- **👤 Profil** : Expanded par défaut
-- **🎯 Actions** : Expanded par défaut
-- **📊 Dernière analyse** : Expanded par défaut
-- **✨ Fonctionnalités** : Expanded par défaut (vue non connectée)
-- **📚 Ressources** : Collapsed par défaut
+---
 
 ## Messages de notification
 
 | Message | Type | Déclencheur |
 |---------|------|-------------|
-| "Authentification Herald réussie !" | Info | Connexion OAuth réussie |
-| "Token Herald enregistré avec succès !" | Info | Token manuel défini |
-| "Déconnecté de Herald" | Info | Déconnexion |
-| "Analyse Herald en cours..." | Progress | Pendant l'analyse |
-| "Analyse terminée ! Score: XX/100 (Grade) - X problème(s)" | Info | Fin d'analyse |
-| "Vous devez vous connecter pour utiliser Herald" | Warning | Analyse sans auth |
-| "Le token ne peut pas être vide" | Error | Token vide |
-| "Le token doit commencer par 'herald_'" | Error | Format token invalide |
-| "Aucun fichier à analyser" | Warning | Workspace vide |
-| "Erreur d'analyse: ..." | Error | Erreur API |
-| "Aucun rapport disponible" | Warning | Clic sur rapport sans analyse |
+| « Authentification Herald réussie ! » | Info | Connexion OAuth réussie |
+| « Token Herald enregistré avec succès ! » | Info | Token manuel défini |
+| « Voulez-vous vraiment vous déconnecter ? » | Warning (modal) | Déconnexion |
+| « Déconnecté de Herald » | Info | Déconnexion confirmée |
+| « Analyse Herald » / « Collecte des fichiers... » | Progress | Pendant l'analyse |
+| « Analyse terminée ! Score: XX/100 (Grade) - X problème(s) » | Info | Fin d'analyse |
+| « Vous devez vous connecter pour utiliser Herald » | Warning | Analyse sans auth |
+| « Le token ne peut pas être vide » | Error | Token vide |
+| « Le token doit commencer par 'herald_' » | Error | Format token invalide |
+| « Limite quotidienne atteinte ! Passez Pro… » | Warning | Quota gratuit dépassé |
+| « Aucun rapport disponible » | Warning | Clic sur rapport sans analyse |
+| « Rapport téléchargé avec succès ! » | Info | Export PDF/MD réussi |
+| « Compteur mis à jour: X fichier(s) » | Info | Rafraîchissement manuel |
 
-## Commandes palette (Cmd/Ctrl + Shift + P)
+---
 
-Toutes les commandes sont accessibles via la palette :
+## Commandes (Cmd/Ctrl + Shift + P)
 
 ```
-> Async Herald : Lier mon compte
-> Async Herald : Définir le token manuellement
-> Async Herald : Se déconnecter
-> Async Herald : Analyser le projet
-> Async Herald : Voir le rapport complet
-> Async Herald : Ouvrir le menu
+> Async Herald : Lier mon compte              → async-herald.connect
+> Async Herald : Définir le token manuellement → async-herald.setToken
+> Async Herald : Se déconnecter               → async-herald.disconnect
+> Async Herald : Analyser le projet           → async-herald.analyze
+> Async Herald : Voir le rapport complet      → async-herald.openReport
+> Async Herald : Ouvrir le menu               → async-herald.menu
 ```
+
+Commandes internes (non listées dans la palette) : `async-herald.downloadReport`, `async-herald.refreshFileCount`.
+
+---
 
 ## Persistance des données
 
-### Stockées de manière sécurisée (context.secrets)
-- Token Herald (via OAuth ou manuel)
+### Stockées de manière sécurisée (`context.secrets`)
+- Token Herald (OAuth ou manuel)
 
-### Stockées dans globalState
+### Stockées dans `globalState`
 - ID du dernier rapport (`lastReportId`)
 
-### Non persistées (état du provider)
-- Email utilisateur
-- Dernière analyse (score, grade, nombre de problèmes, timestamp)
+### État en mémoire (provider)
+- Email utilisateur, données d'usage, historique, dernière analyse, compteur de fichiers
 
-Ces données sont rechargées au redémarrage de VSCode en vérifiant le token et en appelant l'API si nécessaire.
+Au redémarrage de VSCode, l'extension vérifie le token puis recharge l'email, l'usage, l'historique et le compteur de fichiers via l'API.
 
-## Validation du token manuel
+---
 
-Lors de la saisie d'un token manuel :
+## Configuration technique
 
-1. **Format requis** : Le token doit commencer par `herald_`
-2. **Validation** : Vérification en temps réel dans l'InputBox
-3. **Stockage sécurisé** : Utilisation de `context.secrets.store()`
-4. **Vérification** : Appel à l'API pour récupérer les infos utilisateur
-
-Si le token est invalide, l'utilisateur est averti et peut réessayer.
+| Clé | Valeur |
+|-----|--------|
+| API | `https://api.herald.codes` |
+| Web | `https://herald.codes` |
+| Écran d'autorisation | `herald.codes/herald/authorize` |
+| Redirect URI | `vscode://async.async-herald/auth/callback` |
+| Vue | `asyncHeraldView` (webview) dans `async-herald-secondary` |

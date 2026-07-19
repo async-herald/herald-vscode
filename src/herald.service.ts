@@ -4,6 +4,50 @@ import * as path from 'path';
 import { HERALD_CONFIG } from './config';
 import { HeraldAuthService } from './auth.service';
 
+// Fichiers sensibles : JAMAIS envoyés au serveur, quelle que soit la configuration.
+// Volontairement non surchargeable depuis herald.config.json.
+const SENSITIVE_EXCLUDE_PATTERNS = [
+  // Variables d'environnement
+  '**/.env',
+  '**/.env.*',
+  '**/*.env',
+  '**/env.json',
+  // Clés et certificats
+  '**/*.pem',
+  '**/*.key',
+  '**/*.p12',
+  '**/*.pfx',
+  '**/*.jks',
+  '**/*.keystore',
+  '**/id_rsa',
+  '**/id_dsa',
+  '**/id_ecdsa',
+  '**/id_ed25519',
+  // Credentials divers
+  '**/.npmrc',
+  '**/.netrc',
+  '**/.pgpass',
+  '**/secrets.*',
+  '**/credentials.*',
+];
+
+// Second filet de sécurité, appliqué sur le chemin de chaque fichier après le
+// findFiles : si un pattern d'inclusion évolue, rien de sensible ne passe.
+const SENSITIVE_PATH_REGEXES = [
+  /(^|\/)\.env($|\.)/i,                          // .env, .env.local, .env.production
+  /(^|\/)[^/]*\.env$/i,                          // config.env, prod.env
+  /(^|\/)env\.json$/i,
+  /\.(pem|key|p12|pfx|jks|keystore)$/i,
+  /(^|\/)id_(rsa|dsa|ecdsa|ed25519)(\.|$)/i,
+  /(^|\/)\.(npmrc|netrc|pgpass)$/i,
+  /(^|\/)(secrets?|credentials)\./i,
+];
+
+function isSensitivePath(relativePath: string): boolean {
+  const normalized = relativePath.replace(/\\/g, '/');
+  return SENSITIVE_PATH_REGEXES.some(re => re.test(normalized));
+}
+
 interface AnalyzeRequest {
   projectName: string;
   files: Array<{
@@ -43,6 +87,12 @@ interface AnalyzeResponse {
   analysis: {
     projectName: string;
     analyzedAt: string;
+    // Score officiel du dépôt, calculé et persisté par le serveur (densité sur les
+    // totaux). À afficher tel quel : c'est le MÊME chiffre que le rapport en ligne.
+    scores?: {
+      overall: number;
+      grade: string;
+    };
     families: {
       uriel: HeraldFamily;
       auriel: HeraldFamily;
@@ -369,6 +419,9 @@ HERALD ERROR LOG - ${errorDetails.timestamp}
 
   private getExcludePatterns(heraldConfig: { ignore?: string[] }): string[] {
     const excludePatterns = [
+      // Fichiers sensibles (env, clés, credentials) — non négociable
+      ...SENSITIVE_EXCLUDE_PATTERNS,
+
       // Dépendances
       '**/node_modules/**',
       '**/vendor/**',
@@ -510,6 +563,10 @@ HERALD ERROR LOG - ${errorDetails.timestamp}
       for (const uri of uris) {
         if (count >= MAX_FILES) break;
 
+        if (isSensitivePath(vscode.workspace.asRelativePath(uri))) {
+          continue;
+        }
+
         try {
           const stat = await vscode.workspace.fs.stat(uri);
           if (stat.size <= MAX_FILE_SIZE) {
@@ -605,6 +662,13 @@ HERALD ERROR LOG - ${errorDetails.timestamp}
         if (files.length >= MAX_FILES) break;
         if (totalSize >= MAX_TOTAL_SIZE) break;
 
+        const relativePath = vscode.workspace.asRelativePath(uri);
+        if (isSensitivePath(relativePath)) {
+          console.log(`🔒 Fichier sensible ignoré (non envoyé): ${relativePath}`);
+          skippedFiles++;
+          continue;
+        }
+
         try {
           const stat = await vscode.workspace.fs.stat(uri);
 
@@ -626,7 +690,7 @@ HERALD ERROR LOG - ${errorDetails.timestamp}
           }
 
           files.push({
-            path: vscode.workspace.asRelativePath(uri),
+            path: relativePath,
             content: content,
             language: document.languageId
           });

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { HeraldAuthService } from './auth.service';
 import { UsageResponse, Issue, HistoryEntry } from './herald.service';
+import { HERALD_CONFIG } from './config';
 
 export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
@@ -156,14 +157,14 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
           }
           break;
         case 'openProPage':
-          await vscode.env.openExternal(vscode.Uri.parse('https://app.itsasync.fr/pro'));
+          await vscode.env.openExternal(vscode.Uri.parse(`${HERALD_CONFIG.WEB_URL}/plans`));
           break;
         case 'openRulesList':
-          await vscode.env.openExternal(vscode.Uri.parse('https://app.itsasync.fr/herald#criteres'));
+          await vscode.env.openExternal(vscode.Uri.parse(`${HERALD_CONFIG.WEB_URL}/criteria`));
           break;
         case 'openHistoryReport':
           if (data.reportId) {
-            await vscode.env.openExternal(vscode.Uri.parse(`https://app.itsasync.fr/heralds/report/${data.reportId}`));
+            await vscode.env.openExternal(vscode.Uri.parse(`${HERALD_CONFIG.WEB_URL}/reports/${data.reportId}`));
           }
           break;
         case 'downloadReport':
@@ -286,12 +287,12 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
 
   private getHeraldLabel(key: string): string {
     const labels: { [key: string]: string } = {
-      auriel: 'Auriel - Architecture',
-      barachiel: 'Barachiel - Performance',
-      cassiel: 'Cassiel - Patterns IA',
-      raziel: 'Raziel - Documentation',
-      uriel: 'Uriel - Sécurité',
-      zadkiel: 'Zadkiel - Qualité'
+      auriel: 'Structure',
+      barachiel: 'Performance',
+      cassiel: 'Patterns IA',
+      raziel: 'Documentation',
+      uriel: 'Sécurité',
+      zadkiel: 'Qualité'
     };
     return labels[key] || key;
   }
@@ -318,6 +319,62 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
       zadkiel: 'inspecte la qualité globale du code'
     };
     return descriptions[key] || '';
+  }
+
+  // Héraut céleste doré (identique à HeraldCelestial de l'app web) affiché
+  // pendant l'analyse, sur fond doré. Animé via les keyframes ha-* du CSS.
+  private getCelestialSVG(): string {
+    return `
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="hg-celestial" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#FFFFFF" />
+            <stop offset="100%" stop-color="#FBF3DA" />
+          </linearGradient>
+          <linearGradient id="hg-celestial-deep" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#FFFDF6" />
+            <stop offset="100%" stop-color="#F0E5C0" />
+          </linearGradient>
+          <radialGradient id="hg-celestial-glow" cx="50%" cy="50%" r="55%">
+            <stop offset="0%" stop-color="#FBE8B8" stop-opacity="0.7" />
+            <stop offset="60%" stop-color="#FBE8B8" stop-opacity="0.18" />
+            <stop offset="100%" stop-color="#FBE8B8" stop-opacity="0" />
+          </radialGradient>
+        </defs>
+        <circle cx="50" cy="50" r="34" fill="url(#hg-celestial-glow)" />
+        <circle cx="50" cy="50" r="18" fill="#F3E9CC" opacity="0.55" />
+        <g class="ha-wing ha-wing-tl">
+          <path d="M42 44 Q 26 30, 8 16 Q 12 28, 24 38 Q 16 34, 8 28 Q 18 40, 40 46 Z" fill="url(#hg-celestial)" stroke="#C8A96A" stroke-width="0.9" />
+          <path d="M38 42 Q 28 34, 18 26 M 34 40 Q 24 32, 14 24" stroke="#C8A96A" stroke-width="0.45" opacity="0.5" fill="none" />
+        </g>
+        <g class="ha-wing ha-wing-tr">
+          <path d="M58 44 Q 74 30, 92 16 Q 88 28, 76 38 Q 84 34, 92 28 Q 82 40, 60 46 Z" fill="url(#hg-celestial)" stroke="#C8A96A" stroke-width="0.9" />
+          <path d="M62 42 Q 72 34, 82 26 M 66 40 Q 76 32, 86 24" stroke="#C8A96A" stroke-width="0.45" opacity="0.5" fill="none" />
+        </g>
+        <g class="ha-wing ha-wing-bl">
+          <path d="M42 56 Q 26 70, 8 84 Q 12 72, 24 62 Q 16 66, 8 72 Q 18 60, 40 54 Z" fill="url(#hg-celestial-deep)" stroke="#C8A96A" stroke-width="0.9" />
+          <path d="M38 58 Q 28 66, 18 74 M 34 60 Q 24 68, 14 76" stroke="#C8A96A" stroke-width="0.45" opacity="0.5" fill="none" />
+        </g>
+        <g class="ha-wing ha-wing-br">
+          <path d="M58 56 Q 74 70, 92 84 Q 88 72, 76 62 Q 84 66, 92 72 Q 82 60, 60 54 Z" fill="url(#hg-celestial-deep)" stroke="#C8A96A" stroke-width="0.9" />
+          <path d="M62 58 Q 72 66, 82 74 M 66 60 Q 76 68, 86 76" stroke="#C8A96A" stroke-width="0.45" opacity="0.5" fill="none" />
+        </g>
+        <g class="ha-deco">
+          <ellipse cx="50" cy="22" rx="12" ry="4" fill="none" stroke="#C8A96A" stroke-width="1.8" />
+          <ellipse cx="50" cy="22" rx="8" ry="2.4" fill="none" stroke="#E8D8A8" stroke-width="0.9" opacity="0.85" />
+          <circle cx="50" cy="22" r="1.4" fill="#C8A96A" />
+        </g>
+        <circle cx="50" cy="50" r="14" fill="#FFFFFF" stroke="#B89D56" stroke-width="1.8" />
+        <g class="ha-eye">
+          <g class="ha-pupil">
+            <circle cx="50" cy="50" r="9" fill="#E8D8A8" />
+            <circle cx="50" cy="50" r="4" fill="#2A2A36" />
+            <circle cx="53" cy="47" r="2" fill="#FFFFFF" />
+            <circle cx="47" cy="52" r="0.8" fill="#FFFFFF" opacity="0.6" />
+          </g>
+        </g>
+      </svg>
+    `;
   }
 
   private groupIssuesByHerald(issues: Array<{
@@ -634,80 +691,111 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     .loading-container {
-      background: var(--vscode-sideBar-background);
-      border-radius: 3px;
-      padding: 16px;
+      position: relative;
+      background: linear-gradient(160deg, #FEF3C7 0%, #FDE8B0 55%, #F8D77E 100%);
+      border: 1px solid #F0C860;
+      border-radius: 10px;
+      padding: 22px 16px 18px;
       margin-bottom: 8px;
       text-align: center;
       display: flex;
       flex-direction: column;
       align-items: center;
+      overflow: hidden;
     }
 
-    .herald-icon {
-      width: 80px;
-      height: 80px;
-      margin-bottom: 12px;
-      animation: float 3s ease-in-out infinite;
+    /* Halo lumineux derrière le héraut */
+    .loading-container::before {
+      content: '';
+      position: absolute;
+      top: 4px;
+      left: 50%;
+      width: 140px;
+      height: 140px;
+      transform: translateX(-50%);
+      background: radial-gradient(circle, rgba(251, 232, 184, 0.95) 0%, rgba(251, 232, 184, 0) 70%);
+      pointer-events: none;
     }
 
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-6px); }
+    .herald-celestial {
+      position: relative;
+      width: 84px;
+      height: 84px;
+      display: inline-block;
+      animation: ha-float 3s ease-in-out infinite;
+      will-change: transform;
     }
+    .herald-celestial svg { width: 100%; height: 100%; display: block; overflow: visible; }
 
-    .herald-icon svg path:nth-child(2),
-    .herald-icon svg path:nth-child(3) {
-      transform-origin: 42px 50px;
-      animation: flapLeft 1.2s ease-in-out infinite;
-    }
+    .herald-celestial .ha-wing,
+    .herald-celestial .ha-deco,
+    .herald-celestial .ha-eye,
+    .herald-celestial .ha-pupil { transform-box: view-box; }
 
-    .herald-icon svg path:nth-child(4),
-    .herald-icon svg path:nth-child(5) {
-      transform-origin: 58px 50px;
-      animation: flapRight 1.2s ease-in-out infinite;
-    }
+    .herald-celestial .ha-wing-tl { transform-origin: 42px 44px; animation: ha-wing-tl 1.2s ease-in-out infinite alternate; }
+    .herald-celestial .ha-wing-tr { transform-origin: 58px 44px; animation: ha-wing-tr 1.2s ease-in-out infinite alternate; }
+    .herald-celestial .ha-wing-bl { transform-origin: 42px 56px; animation: ha-wing-bl 1.2s ease-in-out infinite alternate; animation-delay: 0.05s; }
+    .herald-celestial .ha-wing-br { transform-origin: 58px 56px; animation: ha-wing-br 1.2s ease-in-out infinite alternate; animation-delay: 0.05s; }
+    .herald-celestial .ha-deco { transform-origin: 50px 24px; animation: ha-deco-pulse 3.6s ease-in-out infinite; }
+    .herald-celestial .ha-eye { transform-origin: 50px 50px; animation: ha-eye-blink 9s steps(1, end) infinite; }
+    .herald-celestial .ha-pupil { transform-origin: 50px 50px; animation: ha-pupil-move 5.4s ease-in-out infinite; }
 
-    @keyframes flapLeft {
-      0%, 100% { transform: rotate(0deg); }
-      50% { transform: rotate(-15deg); }
-    }
-
-    @keyframes flapRight {
-      0%, 100% { transform: rotate(0deg); }
-      50% { transform: rotate(15deg); }
+    @keyframes ha-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+    @keyframes ha-wing-tl { from { transform: rotate(0deg); } to { transform: rotate(-15deg); } }
+    @keyframes ha-wing-tr { from { transform: rotate(0deg); } to { transform: rotate(15deg); } }
+    @keyframes ha-wing-bl { from { transform: rotate(0deg); } to { transform: rotate(15deg); } }
+    @keyframes ha-wing-br { from { transform: rotate(0deg); } to { transform: rotate(-15deg); } }
+    @keyframes ha-deco-pulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
+    @keyframes ha-eye-blink { 0%, 96% { opacity: 1; } 97%, 98% { opacity: 0.1; } 99%, 100% { opacity: 1; } }
+    @keyframes ha-pupil-move {
+      0%, 20% { transform: translateX(0); }
+      35%, 50% { transform: translateX(2px); }
+      62%, 80% { transform: translateX(-2px); }
+      92%, 100% { transform: translateX(0); }
     }
 
     .loading-text {
-      font-size: 11px;
-      color: var(--vscode-descriptionForeground);
-      margin-bottom: 8px;
+      font-size: 12px;
+      color: #8A6A1E;
+      margin-top: 12px;
+      margin-bottom: 4px;
     }
 
     .herald-name {
       font-weight: 700;
-      transition: color 0.3s ease;
+      color: #92600C;
     }
 
     .progress-bar {
       width: 100%;
-      height: 4px;
-      background: var(--vscode-widget-border);
-      border-radius: 2px;
+      height: 5px;
+      background: rgba(146, 96, 12, 0.16);
+      border-radius: 3px;
       overflow: hidden;
-      margin-top: 8px;
+      margin-top: 12px;
     }
 
     .progress-bar-fill {
       height: 100%;
-      border-radius: 2px;
-      transition: width 0.1s linear, background-color 0.3s ease;
+      border-radius: 3px;
+      background: linear-gradient(90deg, #F0C860, #C8A96A);
+      transition: width 0.1s linear;
     }
 
     .timer {
       margin-top: 6px;
       font-size: 10px;
-      color: var(--vscode-descriptionForeground);
+      color: #9A7B34;
+      font-variant-numeric: tabular-nums;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .herald-celestial,
+      .herald-celestial .ha-wing-tl, .herald-celestial .ha-wing-tr,
+      .herald-celestial .ha-wing-bl, .herald-celestial .ha-wing-br,
+      .herald-celestial .ha-deco, .herald-celestial .ha-eye, .herald-celestial .ha-pupil {
+        animation: none;
+      }
     }
 
     .disabled {
@@ -1095,9 +1183,9 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
     </div>
 
     ${!this.isAnalyzing ? `
-    <!-- Heralds -->
+    <!-- Familles -->
     <div class="results">
-      <div class="result-header">Heralds</div>
+      <div class="result-header">Familles</div>
 
       ${(() => {
         const groupedIssues = this.groupIssuesByHerald(this.lastAnalysis.issues);
@@ -1177,12 +1265,12 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
     ` : ''}
 
       ${this.isAnalyzing ? `
-      <!-- Loading State (compact) -->
-      <div class="loading-container" style="padding: 12px; margin-top: 8px;">
-        <div class="herald-icon" id="herald-icon" style="width: 50px; height: 50px;"></div>
-        <p class="loading-text" style="margin-top: 8px;">
-          <span class="herald-name" id="herald-name">Seraph</span>
-          <span id="herald-description">évalue la qualité globale</span>
+      <!-- Loading State : héraut céleste sur fond doré -->
+      <div class="loading-container">
+        <div class="herald-celestial">${this.getCelestialSVG()}</div>
+        <p class="loading-text">
+          <span class="herald-name" id="herald-name">Herald</span>
+          <span id="herald-description">déploie son aura sur votre code…</span>
         </p>
         <div class="progress-bar">
           <div class="progress-bar-fill" id="progress-fill"></div>
@@ -1193,83 +1281,46 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
       </div>
       <script>
         (function() {
-          const HERALD_STEPS = [
-            { name: 'Seraph', description: 'évalue la qualité globale', color: '#A78BFA' },
-            { name: 'Uriel', description: 'traque les failles de sécurité', color: '#EF4444' },
-            { name: 'Auriel', description: 'examine l\\'architecture', color: '#8B5CF6' },
-            { name: 'Barachiel', description: 'détecte les memory leaks', color: '#10B981' },
-            { name: 'Zadkiel', description: 'inspecte la qualité du code', color: '#3B82F6' },
-            { name: 'Raziel', description: 'vérifie la documentation', color: '#06B6D4' },
-            { name: 'Cassiel', description: 'identifie le code IA', color: '#F59E0B' },
+          const FAMILY_STEPS = [
+            { name: 'Structure', description: 'range l\\'arborescence et traque les cycles' },
+            { name: 'Sécurité', description: 'traque les failles et les fuites' },
+            { name: 'Patterns IA', description: 'repère le code généré non optimisé' },
+            { name: 'Performance', description: 'détecte les goulots et memory leaks' },
+            { name: 'Qualité', description: 'inspecte la qualité globale du code' },
+            { name: 'Documentation', description: 'vérifie la doc et la couverture de tests' },
           ];
-
-          const HERALD_COLORS = {
-            0: { primary: '#A78BFA', secondary: '#DDD6FE' },
-            1: { primary: '#EF4444', secondary: '#FCA5A5' },
-            2: { primary: '#8B5CF6', secondary: '#C4B5FD' },
-            3: { primary: '#10B981', secondary: '#6EE7B7' },
-            4: { primary: '#3B82F6', secondary: '#93C5FD' },
-            5: { primary: '#06B6D4', secondary: '#67E8F9' },
-            6: { primary: '#F59E0B', secondary: '#FCD34D' },
-          };
-
-          function getHeraldSVG(index) {
-            const { primary, secondary } = HERALD_COLORS[index];
-            return \`
-              <svg viewBox="0 0 100 100" width="50" height="50">
-                <circle cx="50" cy="50" r="45" fill="none" stroke="\${secondary}" stroke-width="1" opacity="0.3"/>
-                <path d="M42 44 L28 30 L10 16 L12 26 L22 36 L18 34 L10 28 L16 40 L28 45 L40 46 Z"
-                      fill="\${secondary}" stroke="\${primary}" stroke-width="0.8"/>
-                <path d="M42 56 L28 70 L10 84 L12 74 L22 64 L18 66 L10 72 L16 60 L28 55 L40 54 Z"
-                      fill="\${secondary}" stroke="\${primary}" stroke-width="0.8"/>
-                <path d="M58 44 L72 30 L90 16 L88 26 L78 36 L82 34 L90 28 L84 40 L72 45 L60 46 Z"
-                      fill="\${secondary}" stroke="\${primary}" stroke-width="0.8"/>
-                <path d="M58 56 L72 70 L90 84 L88 74 L78 64 L82 66 L90 72 L84 60 L72 55 L60 54 Z"
-                      fill="\${secondary}" stroke="\${primary}" stroke-width="0.8"/>
-                <circle cx="50" cy="50" r="14" fill="#FFF" stroke="\${primary}" stroke-width="2"/>
-                <circle cx="50" cy="50" r="9" fill="\${primary}"/>
-                <circle cx="50" cy="50" r="4" fill="#1E1B4B"/>
-                <circle cx="53" cy="47" r="2" fill="#FFF"/>
-              </svg>
-            \`;
-          }
 
           let currentIndex = 0;
           const startTime = Date.now();
+          const nameEl = document.getElementById('herald-name');
+          const descEl = document.getElementById('herald-description');
+          const fillEl = document.getElementById('progress-fill');
+          const timeEl = document.getElementById('elapsed-time');
 
-          function updateDisplay() {
-            const step = HERALD_STEPS[currentIndex];
-            const nameEl = document.getElementById('herald-name');
-            const descEl = document.getElementById('herald-description');
-            const fillEl = document.getElementById('progress-fill');
-            const iconEl = document.getElementById('herald-icon');
+          function updateStep() {
+            const step = FAMILY_STEPS[currentIndex];
             if (nameEl) nameEl.textContent = step.name;
-            if (nameEl) nameEl.style.color = step.color;
             if (descEl) descEl.textContent = step.description;
-            if (fillEl) fillEl.style.backgroundColor = step.color;
-            if (iconEl) iconEl.innerHTML = getHeraldSVG(currentIndex);
           }
 
           function updateProgress() {
             const elapsed = Date.now() - startTime;
             const progress = Math.min(100, (elapsed / 21000) * 100);
-            const fillEl = document.getElementById('progress-fill');
-            const timeEl = document.getElementById('elapsed-time');
             if (fillEl) fillEl.style.width = progress + '%';
             if (timeEl) timeEl.textContent = (elapsed / 1000).toFixed(1) + 's';
           }
 
-          updateDisplay();
+          updateStep();
 
-          const heraldInterval = setInterval(() => {
-            currentIndex = (currentIndex + 1) % 7;
-            updateDisplay();
-          }, 3000);
+          const stepInterval = setInterval(() => {
+            currentIndex = (currentIndex + 1) % FAMILY_STEPS.length;
+            updateStep();
+          }, 2600);
 
           const timerInterval = setInterval(updateProgress, 100);
 
           window.stopHeraldAnimation = function() {
-            clearInterval(heraldInterval);
+            clearInterval(stepInterval);
             clearInterval(timerInterval);
           };
         })();

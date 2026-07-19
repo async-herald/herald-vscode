@@ -11,7 +11,9 @@ export class HeraldAuthFlow {
 
   async authenticate(): Promise<boolean> {
     try {
-      const authUrl = `${HERALD_CONFIG.API_URL}${HERALD_CONFIG.AUTHORIZE_ENDPOINT}` +
+      // L'écran d'autorisation est servi par l'app web herald.codes (et non
+      // plus par l'API), qui gère la connexion puis génère le jeton d'accès.
+      const authUrl = `${HERALD_CONFIG.WEB_URL}${HERALD_CONFIG.AUTHORIZE_ENDPOINT}` +
         `?redirect_uri=${encodeURIComponent(HERALD_CONFIG.REDIRECT_URI)}`;
 
       await vscode.env.openExternal(vscode.Uri.parse(authUrl));

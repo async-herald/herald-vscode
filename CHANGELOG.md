@@ -4,6 +4,41 @@ Toutes les modifications notables de l'extension Async Herald.
 
 ---
 
+## [0.0.13] - 2026
+
+### Amélioré
+- Nouvel écran de chargement : **héraut céleste doré** animé sur fond doré pendant l'analyse
+- Résultats regroupés par **familles** (Structure, Sécurité, Patterns IA, Performance, Qualité, Documentation) au lieu des noms d'anges
+
+---
+
+## [0.0.12] - 2026
+
+### Ajouté
+- Onglet **Usage** : plan actif, quota quotidien restant, limite de débit et compteur de fichiers analysés
+- Export du rapport en **PDF** et **Markdown** (comptes Pro)
+- Détection de la limite quotidienne avec invitation à passer Pro
+
+### Amélioré
+- Historique des analyses récupéré après chaque analyse
+- Migration des URLs vers le domaine `herald.codes` (API, web, rapports)
+
+---
+
+## [0.0.11] - 2026
+
+### Ajouté
+- Nouvelle interface **webview** en 3 onglets (Analyse, Usage, Config) remplaçant l'ancienne arborescence
+- Résultats regroupés par les **6 familles Herald** (Auriel, Barachiel, Cassiel, Raziel, Uriel, Zadkiel)
+- Problèmes **cliquables** ouvrant directement le fichier à la bonne ligne
+- Éditeur intégré de `herald.config.json` (fichiers ignorés, règles désactivées, `maxFileLines`)
+
+### Amélioré
+- Flow d'authentification servi par l'app web herald.codes
+- État de chargement et progression pendant l'analyse
+
+---
+
 ## [0.0.10] - 2025
 
 ### Ajouté

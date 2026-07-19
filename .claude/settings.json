@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(perl -0pi -e 's/crate::auth::claims_from_headers\\\\\\(&headers\\\\\\)\\\\.map\\\\\\(\\\\|c\\\\| c\\\\.id\\\\\\)/crate::auth::optional_user_id\\(&headers, &db\\).await/g' handlers.rs)",
+      "Bash(grep -rn \"/reports/\\\\|reports/\\\\${\" components lib)",
+      "Bash(echo \"exit=$? done\")",
+      "Bash(cd /Users/graven/Developpement/Async/folder/heraldapp)",
+      "Bash(grep -rln \"herald-angel\\\\|ha-wing\\\\|ha-pupil\\\\|celestial\\\\|ha-eye\" app/styles/ app/globals.css)"
+    ],
+    "additionalDirectories": [
+      "/Users/graven/Developpement/Async/folder/heraldapp/app/herald/authorize"
+    ]
+  }
+}

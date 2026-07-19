@@ -173,9 +173,15 @@ export function activate(context: vscode.ExtensionContext) {
               // 2. Analyse terminée
               progress.report({ increment: 100, message: 'Terminé !' });
 
+              // Score officiel = celui du serveur (densité sur les totaux du dépôt),
+              // le MÊME que le rapport en ligne. On NE moyenne PAS les familles : ça
+              // diluerait un vrai problème derrière 5 familles saines (96 vs 77).
+              // Fallback sur l'ancienne moyenne si un vieux serveur ne renvoie pas `scores`.
               const familyScores = Object.values(result.analysis.families).map(f => f.score);
-              const score = Math.round(familyScores.reduce((sum, s) => sum + s, 0) / familyScores.length);
-              const grade = score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 60 ? 'D' : 'F';
+              const score = result.analysis.scores?.overall
+                ?? Math.round(familyScores.reduce((sum, s) => sum + s, 0) / familyScores.length);
+              const grade = result.analysis.scores?.grade
+                ?? (score >= 90 ? 'A' : score >= 75 ? 'B' : score >= 60 ? 'C' : score >= 40 ? 'D' : 'F');
               const issuesCount = result.analysis.stats.issuesCount.total;
               const totalLines = result.analysis.stats.totalLines || 0;
 
@@ -248,7 +254,7 @@ export function activate(context: vscode.ExtensionContext) {
                   'Devenir Pro'
                 );
                 if (choice === 'Devenir Pro') {
-                  await vscode.env.openExternal(vscode.Uri.parse('https://app.itsasync.fr/pro'));
+                  await vscode.env.openExternal(vscode.Uri.parse(`${HERALD_CONFIG.WEB_URL}/plans`));
                 }
               }
             }
@@ -272,7 +278,7 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      const reportUrl = `https://app.itsasync.fr/heralds/report/${reportId}`;
+      const reportUrl = `${HERALD_CONFIG.WEB_URL}/reports/${reportId}`;
       await vscode.env.openExternal(vscode.Uri.parse(reportUrl));
     })
   );
@@ -305,7 +311,7 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      const downloadUrl = `${HERALD_CONFIG.API_URL}/heralds/report/${reportId}/download?format=${format.value}`;
+      const downloadUrl = `${HERALD_CONFIG.API_URL}/heralds/reports/${reportId}/export?format=${format.value}`;
 
       try {
         const response = await fetch(downloadUrl, {
