@@ -7,12 +7,10 @@ import { HeraldAuthService } from './auth.service';
 // Fichiers sensibles : JAMAIS envoyés au serveur, quelle que soit la configuration.
 // Volontairement non surchargeable depuis herald.config.json.
 const SENSITIVE_EXCLUDE_PATTERNS = [
-  // Variables d'environnement
   '**/.env',
   '**/.env.*',
   '**/*.env',
   '**/env.json',
-  // Clés et certificats
   '**/*.pem',
   '**/*.key',
   '**/*.p12',
@@ -23,7 +21,6 @@ const SENSITIVE_EXCLUDE_PATTERNS = [
   '**/id_dsa',
   '**/id_ecdsa',
   '**/id_ed25519',
-  // Credentials divers
   '**/.npmrc',
   '**/.netrc',
   '**/.pgpass',
@@ -157,7 +154,6 @@ export class HeraldService {
 
   constructor(authService: HeraldAuthService) {
     this.authService = authService;
-    // Créer le fichier de log dans le dossier workspace ou home
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (workspaceFolders) {
       this.logFilePath = path.join(workspaceFolders[0].uri.fsPath, '.herald-error.log');
@@ -214,6 +210,23 @@ HERALD ERROR LOG - ${errorDetails.timestamp}
     }
   }
 
+  async analyzeSpecificFiles(uris: vscode.Uri[]): Promise<AnalyzeResponse | null> {
+    const token = await this.authService.getToken();
+    if (!token) {
+      vscode.window.showErrorMessage('Veuillez vous authentifier d\'abord');
+      return null;
+    }
+
+    const files = await this.collectSpecificFiles(uris);
+    if (files.length === 0) {
+      vscode.window.showWarningMessage('Aucun fichier valide à analyser');
+      return null;
+    }
+
+    const workspaceName = vscode.workspace.name || 'Unknown Project';
+    return this.sendAnalysisRequest(workspaceName, files, token);
+  }
+
   async analyzeWorkspace(): Promise<AnalyzeResponse | null> {
     const token = await this.authService.getToken();
 
@@ -230,12 +243,14 @@ HERALD ERROR LOG - ${errorDetails.timestamp}
     }
 
     const workspaceName = vscode.workspace.name || 'Unknown Project';
+    return this.sendAnalysisRequest(workspaceName, files, token);
+  }
+
+  private async sendAnalysisRequest(workspaceName: string, files: Array<{ path: string; content: string; language: string }>, token: string): Promise<AnalyzeResponse | null> {
     const request: AnalyzeRequest = {
       projectName: workspaceName,
       files
     };
-
-    // Calculer les stats pour le debug
     const filesWithSize = files.map(f => ({
       path: f.path,
       size: Buffer.byteLength(f.content, 'utf8')
@@ -258,8 +273,6 @@ HERALD ERROR LOG - ${errorDetails.timestamp}
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({})) as { error?: string };
-
-        // Gérer les erreurs spécifiques
         if (response.status === 413) {
           const payloadMB = (payloadSize / 1024 / 1024).toFixed(2);
           const largestMB = (largestFile.size / 1024 / 1024).toFixed(2);
@@ -269,14 +282,11 @@ HERALD ERROR LOG - ${errorDetails.timestamp}
           console.log(`❌ Payload: ${payloadMB} MB | Fichiers: ${files.length} | Plus gros: ${largestFile.path} (${largestMB} MB)`);
           return null;
         } else if (response.status === 429) {
-          // Retourner l'erreur pour permettre un traitement spécifique (ex: proposer Pro)
           return errorData as unknown as AnalyzeResponse;
         } else if (response.status >= 500 && response.status < 600) {
-          // Erreurs serveur (502, 503, etc.) - log détaillé dans un fichier
           const payloadMB = (payloadSize / 1024 / 1024).toFixed(2);
           const largestMB = (largestFile.size / 1024 / 1024).toFixed(2);
 
-          // Collecter les headers de réponse
           const responseHeaders: Record<string, string> = {};
           response.headers.forEach((value, key) => {
             responseHeaders[key] = value;
@@ -315,14 +325,12 @@ HERALD ERROR LOG - ${errorDetails.timestamp}
       const data = await response.json() as AnalyzeResponse & { error?: string };
       console.log('📡 Réponse brute de l\'API:', JSON.stringify(data, null, 2));
 
-      // Valider la structure de la réponse
       if (!data.analysis && !data.error) {
         console.error('❌ Structure de réponse invalide:', data);
         vscode.window.showErrorMessage('Réponse API invalide: structure inattendue');
         return null;
       }
 
-      // Vérifier si la réponse contient une erreur (ex: limite atteinte)
       if (data.error) {
         return data as unknown as AnalyzeResponse;
       }
@@ -421,45 +429,31 @@ HERALD ERROR LOG - ${errorDetails.timestamp}
     const excludePatterns = [
       // Fichiers sensibles (env, clés, credentials) — non négociable
       ...SENSITIVE_EXCLUDE_PATTERNS,
-
-      // Dépendances
       '**/node_modules/**',
       '**/vendor/**',
       '**/packages/**',
-
-      // Build output
       '**/dist/**',
       '**/build/**',
       '**/target/**',
       '**/out/**',
       '**/.next/**',
-
-      // Contrôle de version
       '**/.git/**',
       '**/.svn/**',
-
-      // IDE
       '**/.vscode/**',
       '**/.idea/**',
-
-      // Cache
       '**/coverage/**',
       '**/.cache/**',
       '**/tmp/**',
       '**/temp/**',
-
-      // Fichiers minifiés
       '**/*.min.js',
       '**/*.min.css',
       '**/*.bundle.js',
 
-      // Lock files (volumineux et inutiles)
+      // Les fichiers de lock sont ignorés car ils saturent le payload sans apporter de valeur sémantique
       '**/package-lock.json',
       '**/yarn.lock',
       '**/Cargo.lock',
       '**/poetry.lock',
-
-      // Assets binaires
       '**/*.png',
       '**/*.jpg',
       '**/*.jpeg',
@@ -475,7 +469,7 @@ HERALD ERROR LOG - ${errorDetails.timestamp}
       '**/*.tar.gz',
     ];
 
-    // Ajouter les patterns d'ignore depuis herald.config.json
+    // Fusionne les règles de base avec les exclusions spécifiques au projet pour respecter les choix de l'utilisateur
     if (heraldConfig.ignore?.length) {
       for (const pattern of heraldConfig.ignore) {
         // Normaliser le pattern (ajouter **/ si c'est un dossier simple)
@@ -498,53 +492,29 @@ HERALD ERROR LOG - ${errorDetails.timestamp}
     }
 
     const includePatterns = [
-      // JavaScript / TypeScript
       '**/*.js', '**/*.ts', '**/*.jsx', '**/*.tsx', '**/*.mjs', '**/*.cjs',
-      // Python
       '**/*.py',
-      // Rust
       '**/*.rs',
-      // Go
       '**/*.go',
-      // Java / Kotlin / Scala / Groovy
       '**/*.java', '**/*.kt', '**/*.kts', '**/*.scala', '**/*.groovy',
-      // C / C++ / C# / Objective-C
       '**/*.c', '**/*.cpp', '**/*.cc', '**/*.h', '**/*.hpp', '**/*.cs', '**/*.m', '**/*.mm',
-      // PHP
       '**/*.php',
-      // Ruby
       '**/*.rb',
-      // Swift
       '**/*.swift',
-      // Dart
       '**/*.dart',
-      // Elixir / Erlang
       '**/*.ex', '**/*.exs', '**/*.erl', '**/*.hrl',
-      // F# / Haskell
       '**/*.fs', '**/*.fsx', '**/*.hs', '**/*.lhs',
-      // Lua
       '**/*.lua',
-      // Perl
       '**/*.pl', '**/*.pm',
-      // R
       '**/*.r', '**/*.R',
-      // Julia
       '**/*.jl',
-      // Clojure
       '**/*.clj', '**/*.cljs', '**/*.cljc',
-      // Vue / Svelte
       '**/*.vue', '**/*.svelte',
-      // Shell
       '**/*.sh', '**/*.bash', '**/*.zsh',
-      // Web
       '**/*.html', '**/*.css', '**/*.scss', '**/*.sass', '**/*.less',
-      // Config / Data
       '**/*.json', '**/*.yaml', '**/*.yml', '**/*.toml',
-      // SQL / GraphQL
       '**/*.sql', '**/*.graphql', '**/*.gql',
-      // Infrastructure
       '**/*.tf', '**/*.tfvars', '**/Dockerfile', '**/Makefile',
-      // Documentation
       '**/*.md'
     ];
 
@@ -573,7 +543,6 @@ HERALD ERROR LOG - ${errorDetails.timestamp}
             count++;
           }
         } catch {
-          // Ignore errors
         }
       }
     }
@@ -587,63 +556,37 @@ HERALD ERROR LOG - ${errorDetails.timestamp}
 
     const heraldConfig = await this.loadHeraldConfig();
     const excludePatterns = this.getExcludePatterns(heraldConfig);
-
-    // Patterns de fichiers à INCLURE
     const includePatterns = [
-      // JavaScript / TypeScript
       '**/*.js', '**/*.ts', '**/*.jsx', '**/*.tsx', '**/*.mjs', '**/*.cjs',
-      // Python
       '**/*.py',
-      // Rust
       '**/*.rs',
-      // Go
       '**/*.go',
-      // Java / Kotlin / Scala / Groovy
       '**/*.java', '**/*.kt', '**/*.kts', '**/*.scala', '**/*.groovy',
-      // C / C++ / C# / Objective-C
       '**/*.c', '**/*.cpp', '**/*.cc', '**/*.h', '**/*.hpp', '**/*.cs', '**/*.m', '**/*.mm',
-      // PHP
       '**/*.php',
-      // Ruby
       '**/*.rb',
-      // Swift
       '**/*.swift',
-      // Dart
       '**/*.dart',
-      // Elixir / Erlang
       '**/*.ex', '**/*.exs', '**/*.erl', '**/*.hrl',
-      // F# / Haskell
       '**/*.fs', '**/*.fsx', '**/*.hs', '**/*.lhs',
-      // Lua
       '**/*.lua',
-      // Perl
       '**/*.pl', '**/*.pm',
-      // R
       '**/*.r', '**/*.R',
-      // Julia
       '**/*.jl',
-      // Clojure
       '**/*.clj', '**/*.cljs', '**/*.cljc',
-      // Vue / Svelte
       '**/*.vue', '**/*.svelte',
-      // Shell
       '**/*.sh', '**/*.bash', '**/*.zsh',
-      // Web
       '**/*.html', '**/*.css', '**/*.scss', '**/*.sass', '**/*.less',
-      // Config / Data
       '**/*.json', '**/*.yaml', '**/*.yml', '**/*.toml',
-      // SQL / GraphQL
       '**/*.sql', '**/*.graphql', '**/*.gql',
-      // Infrastructure
       '**/*.tf', '**/*.tfvars', '**/Dockerfile', '**/Makefile',
-      // Documentation
       '**/*.md'
     ];
 
     // Limites de sécurité (selon le guide Herald)
-    const MAX_FILES = 500;                        // Max 500 fichiers
-    const MAX_FILE_SIZE = 2 * 1024 * 1024;        // Max 2 MB par fichier
-    const MAX_TOTAL_SIZE = 40 * 1024 * 1024;      // Max 40 MB total
+    const MAX_FILES = 500;
+    const MAX_FILE_SIZE = 2 * 1024 * 1024;
+    const MAX_TOTAL_SIZE = 40 * 1024 * 1024;
 
     let totalSize = 0;
     let skippedFiles = 0;
@@ -655,7 +598,7 @@ HERALD ERROR LOG - ${errorDetails.timestamp}
 
       const uris = await vscode.workspace.findFiles(
         pattern,
-        `{${excludePatterns.join(',')}}` // Combine tous les excludes
+        `{${excludePatterns.join(',')}}`
       );
 
       for (const uri of uris) {
@@ -671,8 +614,6 @@ HERALD ERROR LOG - ${errorDetails.timestamp}
 
         try {
           const stat = await vscode.workspace.fs.stat(uri);
-
-          // Skip si fichier trop gros
           if (stat.size > MAX_FILE_SIZE) {
             console.log(`⚠️ Fichier ignoré (trop gros): ${uri.fsPath} (${(stat.size / 1024 / 1024).toFixed(2)} MB)`);
             skippedFiles++;
@@ -701,8 +642,6 @@ HERALD ERROR LOG - ${errorDetails.timestamp}
         }
       }
     }
-
-    // Logs de statistiques
     console.log(`
 📊 Statistiques de collecte:
   ✅ Fichiers collectés: ${files.length}
@@ -717,6 +656,49 @@ HERALD ERROR LOG - ${errorDetails.timestamp}
       vscode.window.showWarningMessage(
         `Limite de ${MAX_FILES} fichiers atteinte. Certains fichiers n'ont pas été analysés.`
       );
+    }
+
+    return files;
+  }
+
+  private async collectSpecificFiles(uris: vscode.Uri[]) {
+    const files: Array<{ path: string; content: string; language: string }> = [];
+    const MAX_FILE_SIZE = 2 * 1024 * 1024;
+    const MAX_TOTAL_SIZE = 40 * 1024 * 1024;
+    let totalSize = 0;
+
+    for (const uri of uris) {
+      if (totalSize >= MAX_TOTAL_SIZE) break;
+
+      const relativePath = vscode.workspace.asRelativePath(uri);
+      if (isSensitivePath(relativePath)) {
+        console.log(`🔒 Fichier sensible ignoré (non envoyé): ${relativePath}`);
+        continue;
+      }
+
+      try {
+        const stat = await vscode.workspace.fs.stat(uri);
+        if (stat.size > MAX_FILE_SIZE) {
+          console.log(`⚠️ Fichier ignoré (trop gros): ${uri.fsPath}`);
+          continue;
+        }
+
+        const document = await vscode.workspace.openTextDocument(uri);
+        const content = document.getText();
+        const fileSize = Buffer.byteLength(content, 'utf8');
+
+        if (totalSize + fileSize > MAX_TOTAL_SIZE) break;
+
+        files.push({
+          path: relativePath,
+          content: content,
+          language: document.languageId
+        });
+
+        totalSize += fileSize;
+      } catch (error) {
+        console.error(`❌ Erreur lecture ${uri.fsPath}:`, error);
+      }
     }
 
     return files;

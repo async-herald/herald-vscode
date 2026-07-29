@@ -51,11 +51,7 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
     };
 
     webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
-
-    // Vérifier si le fichier de config existe
     this.checkConfigFile();
-
-    // Watcher pour détecter la création/suppression du fichier config
     if (vscode.workspace.workspaceFolders) {
       const pattern = new vscode.RelativePattern(
         vscode.workspace.workspaceFolders[0],
@@ -88,7 +84,7 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
             const filePath = vscode.Uri.joinPath(workspaceFolder.uri, data.file);
             try {
               const document = await vscode.workspace.openTextDocument(filePath);
-              const line = data.line ? data.line - 1 : 0; // VSCode uses 0-based line numbers
+              const line = data.line ? data.line - 1 : 0; // Ajustement d'index car VSCode est basé sur 0
               const column = data.column ? data.column - 1 : 0;
               await vscode.window.showTextDocument(document, {
                 selection: new vscode.Range(line, column, line, column)
@@ -402,8 +398,6 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
 
     issues.forEach(issue => {
       let family = issue.family;
-
-      // Si pas de family, mapper depuis la catégorie
       if (!family) {
         const categoryToFamily: { [key: string]: string } = {
           'architecture': 'auriel',
@@ -1189,7 +1183,6 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
 
       ${(() => {
         const groupedIssues = this.groupIssuesByHerald(this.lastAnalysis.issues);
-        // Calculer le nombre de problèmes uniques par famille
         const uniqueIssuesCounts: { [key: string]: number } = {};
         Object.keys(this.lastAnalysis.heraldFamilies).forEach(key => {
           uniqueIssuesCounts[key] = this.groupDuplicateIssues(groupedIssues[key] || []).length;
@@ -1199,7 +1192,7 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
           .sort((a, b) => {
             const issuesA = uniqueIssuesCounts[a[0]] || 0;
             const issuesB = uniqueIssuesCounts[b[0]] || 0;
-            return issuesB - issuesA; // Tri décroissant (plus de problèmes en premier)
+            return issuesB - issuesA; 
           })
           .map(([key, score]) => {
           const heraldIssues = groupedIssues[key] || [];
@@ -1561,19 +1554,14 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     function switchTab(tabName) {
-      // Remove active class from all tabs and tab-contents
       document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-
-      // Add active class to selected tab
       const tabs = document.querySelectorAll('.tab');
       tabs.forEach(tab => {
         if (tab.getAttribute('onclick').includes(tabName)) {
           tab.classList.add('active');
         }
       });
-
-      // Add active class to corresponding tab content
       const tabContent = document.getElementById('tab-' + tabName);
       if (tabContent) {
         tabContent.classList.add('active');
