@@ -93,7 +93,6 @@ export class AsyncHeraldProvider implements vscode.TreeDataProvider<HeraldItem> 
   }
 
   private getRootItems(): HeraldItem[] {
-    // La vue non connectée est gérée par viewsWelcome dans package.json
     if (!this.isAuthenticated) {
       return [];
     }
@@ -102,8 +101,6 @@ export class AsyncHeraldProvider implements vscode.TreeDataProvider<HeraldItem> 
 
   private getAuthenticatedView(): HeraldItem[] {
     const items: HeraldItem[] = [];
-
-    // User info
     items.push({
       type: HeraldItemType.STATUS,
       label: this.userEmail || 'Connecté',
@@ -118,8 +115,6 @@ export class AsyncHeraldProvider implements vscode.TreeDataProvider<HeraldItem> 
       icon: new vscode.ThemeIcon('sign-out'),
       contextValue: 'logoutButton'
     });
-
-    // Analyze button
     items.push({
       type: HeraldItemType.BUTTON,
       label: 'Analyser le projet',

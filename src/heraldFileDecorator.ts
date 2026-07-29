@@ -5,7 +5,6 @@ export class HeraldFileDecorationProvider implements vscode.FileDecorationProvid
   readonly onDidChangeFileDecorations = this._onDidChangeFileDecorations.event;
 
   provideFileDecoration(uri: vscode.Uri): vscode.FileDecoration | undefined {
-    // Vérifier si le fichier est herald.config.json
     if (uri.path.endsWith('herald.config.json')) {
       return {
         badge: 'H',

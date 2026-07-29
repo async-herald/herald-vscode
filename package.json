@@ -83,6 +83,11 @@
         "command": "async-herald.menu",
         "title": "Async Herald : Ouvrir le menu",
         "icon": "media/aile.svg"
+      },
+      {
+        "command": "async-herald.analyzeActiveFile",
+        "title": "Analiser avec Async Herald",
+        "icon": "media/aile.svg"
       }
     ],
     "menus": {
@@ -92,7 +97,23 @@
           "group": "navigation",
           "when": "resourceLangId != ''"
         }
+      ],
+      "editor/context": [
+        {
+          "command": "async-herald.analyzeActiveFile",
+          "group": "navigation"
+        }
       ]
+    },
+    "configuration": {
+      "title": "Async Herald",
+      "properties": {
+        "asyncHerald.analyzeOnlyDiffs": {
+          "type": "boolean",
+          "default": false,
+          "description": "N'analyser que les fichiers modifiés (diff) depuis la dernière analyse."
+        }
+      }
     }
   },
   "scripts": {
@@ -103,7 +124,7 @@
     "lint": "eslint src",
     "test": "vscode-test",
     "package": "vsce package",
-    "install-extension": "code --install-extension async-herald-0.0.1.vsix"
+    "install-extension": "code --install-extension async-herald-0.0.14.vsix"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
