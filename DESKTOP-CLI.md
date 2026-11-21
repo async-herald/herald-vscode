@@ -18,7 +18,7 @@ les deux.
      `~/.local/bin`, puis le `PATH` (AppImage : indiquer son chemin dans le réglage).
 
 Sur macOS, la version est lue dans `Info.plist` (`CFBundleShortVersionString`) :
-en dessous de **0.2.0**, l'extension demande une mise à jour au lieu de lancer
+en dessous de **0.2.1**, l'extension demande une mise à jour au lieu de lancer
 l'app (une version ancienne ouvrirait sa fenêtre au lieu d'analyser).
 
 ## Commande
