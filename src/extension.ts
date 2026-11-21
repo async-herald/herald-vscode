@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { execFile } from 'child_process';
 import { AsyncHeraldWebviewProvider, DesktopStatus } from './AsyncHeraldWebview';
 import { HERALD_CONFIG } from './config';
 import { HeraldFileDecorationProvider } from './heraldFileDecorator';
@@ -67,6 +68,30 @@ export function activate(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand('async-herald.downloadDesktop', async () => {
+      await vscode.env.openExternal(vscode.Uri.parse(HERALD_CONFIG.DOWNLOAD_URL));
+    }),
+
+    vscode.commands.registerCommand('async-herald.updateDesktop', async () => {
+      // Installée avec Homebrew : mise à jour dans un terminal, puis nouvelle
+      // recherche quand le terminal se ferme. Sinon : page de téléchargement.
+      if (await installedWithHomebrew()) {
+        const terminal = vscode.window.createTerminal({ name: 'Async Herald : mise à jour' });
+        terminal.show();
+        terminal.sendText(`brew upgrade --cask ${HERALD_CONFIG.HOMEBREW_CASK} && exit`);
+        const closed = vscode.window.onDidCloseTerminal(async t => {
+          if (t === terminal) {
+            closed.dispose();
+            const status = await checkDesktop();
+            if (status.state === 'ready') {
+              vscode.window.showInformationMessage(
+                `Async Herald Desktop ${status.version ?? ''} est à jour : vous pouvez analyser.`
+              );
+            }
+          }
+        });
+        context.subscriptions.push(closed);
+        return;
+      }
       await vscode.env.openExternal(vscode.Uri.parse(HERALD_CONFIG.DOWNLOAD_URL));
     }),
 
@@ -166,11 +191,11 @@ async function checkDesktop(): Promise<DesktopStatus> {
         path: desktop.bundle ?? desktop.executable,
       };
   await vscode.commands.executeCommand('setContext', 'asyncHerald.desktopState', status.state);
+  // Version installée dans l'en-tête de la vue (un `message` masquerait les
+  // boutons de la vue d'accueil).
   if (welcomeView) {
-    welcomeView.message =
-      status.state === 'outdated'
-        ? `Version installée : ${status.version ?? 'inconnue'} · version requise : ${HERALD_CONFIG.MIN_DESKTOP_VERSION} ou plus récente.`
-        : undefined;
+    welcomeView.description =
+      status.state === 'outdated' ? `${status.version ?? 'version inconnue'} installée` : undefined;
   }
   webviewProvider?.setDesktopStatus(status);
   return status;
@@ -187,11 +212,29 @@ async function promptInstall(status: DesktopStatus): Promise<void> {
     status.state === 'outdated' ? 'Mettre à jour' : 'Télécharger',
     'Indiquer l\'emplacement'
   );
-  if (choice === 'Télécharger' || choice === 'Mettre à jour') {
+  if (choice === 'Mettre à jour') {
+    await vscode.commands.executeCommand('async-herald.updateDesktop');
+  } else if (choice === 'Télécharger') {
     await vscode.commands.executeCommand('async-herald.downloadDesktop');
   } else if (choice === 'Indiquer l\'emplacement') {
     await vscode.commands.executeCommand('async-herald.locateDesktop');
   }
+}
+
+/** Vrai si l'app a été installée avec Homebrew (macOS) : `brew list --cask` la connaît. */
+function installedWithHomebrew(): Promise<boolean> {
+  if (process.platform !== 'darwin') {
+    return Promise.resolve(false);
+  }
+  return new Promise(resolve => {
+    execFile(
+      'brew',
+      ['list', '--cask', HERALD_CONFIG.HOMEBREW_CASK],
+      // VS Code lancé depuis le Dock n'a pas toujours Homebrew dans son PATH.
+      { timeout: 10_000, env: { ...process.env, PATH: `/opt/homebrew/bin:/usr/local/bin:${process.env.PATH ?? ''}` } },
+      err => resolve(!err)
+    );
+  });
 }
 
 /** Message adapté à l'erreur renvoyée par l'app. */
