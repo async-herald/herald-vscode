@@ -20,6 +20,8 @@ Toutes les modifications notables de l'extension Async Herald.
 - Vue d'accueil quand l'app est absente ou trop ancienne : télécharger, revérifier,
   ou indiquer son emplacement (réglage `asyncHerald.desktopPath`).
 - Le dernier rapport du dossier est gardé d'une session à l'autre.
+- Il faut Async Herald Desktop **0.2.1** ou plus récent : une version plus ancienne est
+  signalée avec un bouton « Mettre à jour » (`brew upgrade` si l'app vient de Homebrew).
 
 ### Retiré
 - Connexion au compte herald.codes et jeton dans l'extension (le compte est celui de l'app).
