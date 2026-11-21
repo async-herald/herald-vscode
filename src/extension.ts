@@ -10,9 +10,17 @@ const LAST_REPORT_KEY = 'asyncHerald.lastReport';
 
 let webviewProvider: AsyncHeraldWebviewProvider;
 let desktop: DesktopInstall | undefined;
+/** Vue d'accueil (app absente ou trop ancienne) : son message donne les versions. */
+let welcomeView: vscode.TreeView<never> | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
   webviewProvider = new AsyncHeraldWebviewProvider(context.extensionUri);
+  // Vue d'accueil sans contenu : VS Code y affiche le texte de `viewsWelcome`,
+  // et son message donne la version installée et la version requise.
+  welcomeView = vscode.window.createTreeView<never>('asyncHeraldWelcome', {
+    treeDataProvider: { getChildren: () => [], getTreeItem: item => item },
+  });
+  context.subscriptions.push(welcomeView);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider('asyncHeraldView', webviewProvider)
   );
@@ -158,6 +166,12 @@ async function checkDesktop(): Promise<DesktopStatus> {
         path: desktop.bundle ?? desktop.executable,
       };
   await vscode.commands.executeCommand('setContext', 'asyncHerald.desktopState', status.state);
+  if (welcomeView) {
+    welcomeView.message =
+      status.state === 'outdated'
+        ? `Version installée : ${status.version ?? 'inconnue'} · version requise : ${HERALD_CONFIG.MIN_DESKTOP_VERSION} ou plus récente.`
+        : undefined;
+  }
   webviewProvider?.setDesktopStatus(status);
   return status;
 }

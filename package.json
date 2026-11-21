@@ -56,7 +56,7 @@
       {
         "view": "asyncHeraldWelcome",
         "when": "asyncHerald.desktopState == 'outdated'",
-        "contents": "Votre version d'Async Herald Desktop est trop ancienne pour analyser depuis VS Code.\n\n[$(cloud-download) Mettre à jour Async Herald Desktop](command:async-herald.downloadDesktop)\n\n[$(refresh) J'ai mis à jour l'app](command:async-herald.checkDesktop)"
+        "contents": "Votre version d'Async Herald Desktop est trop ancienne pour analyser depuis VS Code : il faut la version **0.2.0** ou plus récente.\n\n[$(cloud-download) Mettre à jour Async Herald Desktop](command:async-herald.downloadDesktop)\n\n[$(refresh) J'ai mis à jour l'app](command:async-herald.checkDesktop)"
       }
     ],
     "commands": [
