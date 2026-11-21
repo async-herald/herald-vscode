@@ -4,7 +4,7 @@ Toutes les modifications notables de l'extension Async Herald.
 
 ---
 
-## [0.1.0] - 2026
+## [0.0.16] - 2026
 
 ### Changé
 - **Analyse en local** : l'extension lance Async Herald Desktop installé sur la machine
