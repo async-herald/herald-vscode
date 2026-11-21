@@ -133,10 +133,12 @@ export function analyzeWithDesktop(
     let stderrTail = '';
     let pending = '';
     let settled = false;
+    let alive = false;
     const finish = (value: DesktopReport | DesktopError) => {
       if (!settled) {
         settled = true;
         clearTimeout(timer);
+        clearTimeout(startup);
         cancel?.dispose();
         resolve(value);
       }
@@ -147,6 +149,17 @@ export function analyzeWithDesktop(
       finish({ error: 'L\'analyse a dépassé le temps maximal (10 min).', code: 'timeout' });
     }, HERALD_CONFIG.ANALYZE_TIMEOUT_MS);
 
+    // Aucun signe (progression ou rapport) au démarrage : version sans `--analyze`.
+    const startup = setTimeout(() => {
+      if (!alive) {
+        child.kill();
+        finish({
+          error: `Async Herald Desktop${install.version ? ' ' + install.version : ''} ne sait pas encore analyser depuis VS Code. Mettez l'app à jour.`,
+          code: 'unsupported',
+        });
+      }
+    }, HERALD_CONFIG.STARTUP_TIMEOUT_MS);
+
     const cancel = token?.onCancellationRequested(() => {
       child.kill();
       finish({ error: 'Analyse annulée.', code: 'cancelled' });
@@ -154,6 +167,7 @@ export function analyzeWithDesktop(
 
     child.stdout.setEncoding('utf8');
     child.stdout.on('data', (chunk: string) => {
+      alive = true;
       stdout += chunk;
     });
 
@@ -165,6 +179,7 @@ export function analyzeWithDesktop(
       for (const line of lines) {
         const progress = parseProgressLine(line);
         if (progress) {
+          alive = true;
           onProgress(progress.percent, progress.message);
         } else if (line.trim()) {
           stderrTail = (stderrTail + '\n' + line).slice(-2000);

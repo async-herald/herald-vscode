@@ -11,4 +11,8 @@ export const HERALD_CONFIG = {
   // vue d'accueil « trop ancienne » dans package.json (viewsWelcome).
   MIN_DESKTOP_VERSION: '0.2.0',
   ANALYZE_TIMEOUT_MS: 10 * 60 * 1000,
+  // Une app qui sait analyser écrit sa première ligne `PROGRESS` tout de suite.
+  // Sans aucun signe passé ce délai, c'est une version qui ignore `--analyze`
+  // (elle démarre normalement et ne s'arrête pas) : on l'arrête.
+  STARTUP_TIMEOUT_MS: 20 * 1000,
 };

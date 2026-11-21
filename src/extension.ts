@@ -252,6 +252,14 @@ async function showAnalysisError(error: string, code?: string): Promise<void> {
       }
       return;
     }
+    case 'unsupported':
+    case 'version': {
+      const choice = await vscode.window.showWarningMessage(error, 'Mettre à jour');
+      if (choice) {
+        await vscode.commands.executeCommand('async-herald.updateDesktop');
+      }
+      return;
+    }
     case 'quota': {
       const choice = await vscode.window.showWarningMessage(error, 'Voir les offres');
       if (choice) {

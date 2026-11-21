@@ -36,6 +36,11 @@ herald-desktop --analyze <dossier> --json
   étape : `PROGRESS <pourcentage> <message>`, par exemple
   `PROGRESS 60 Analyse des fichiers · 12 / 91`. Les autres lignes de stderr sont
   ignorées (gardées pour les messages d'erreur).
+- La **première ligne `PROGRESS` doit arriver dans les 20 secondes** (par exemple
+  `PROGRESS 0 Préparation`). Sans aucun signe passé ce délai, l'extension arrête
+  l'app et indique que cette version ne sait pas analyser depuis VS Code : c'est
+  ce qui arrive avec une version qui ignore `--analyze` (elle démarre normalement
+  et ne s'arrête pas).
 - À la fin, l'app écrit **un seul objet JSON sur stdout** puis s'arrête.
 
 ## Rapport (code de sortie 0)
