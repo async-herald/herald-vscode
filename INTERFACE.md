@@ -31,14 +31,14 @@ L'analyse passe par l'app Async Herald Desktop. Installez-la, puis revenez ici.
 
 ## App trop ancienne
 
-Sur macOS, une version inférieure à 0.2.1 (lue dans `Info.plist`) ne sait pas analyser
+Sur macOS, une version inférieure à 0.2.0 (lue dans `Info.plist`) ne sait pas analyser
 en ligne de commande : la vue propose **« Mettre à jour Async Herald Desktop »**.
 
 ---
 
 ## En-tête
 
-`Async Herald Desktop 0.2.1 · analyse locale` et un lien **« Ouvrir l'app »**
+`Async Herald Desktop 0.2.0 · analyse locale` et un lien **« Ouvrir l'app »**
 (`async-herald.openInDesktop`, ouvre l'app sur le dossier du projet).
 
 ## Onglet Analyse
