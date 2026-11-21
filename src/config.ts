@@ -1,9 +1,18 @@
 export const HERALD_CONFIG = {
-  // API Herald (analyse, rapports, jetons…) — backend async-herald-rust.
-  API_URL: 'https://api.herald.codes',
-  // Application web Herald : sert l'écran d'autorisation « Lier mon compte ».
+  // Site Herald : téléchargement d'Async Herald Desktop, liste des règles.
   WEB_URL: 'https://herald.codes',
-  REDIRECT_URI: 'vscode://async.async-herald/auth/callback',
-  AUTHORIZE_ENDPOINT: '/herald/authorize',
-  TOKEN_KEY: 'herald_token'
+  DOWNLOAD_URL: 'https://herald.codes/downloads',
+  // Cask Homebrew de l'app (macOS) : mise à jour par `brew upgrade --cask`.
+  HOMEBREW_CASK: 'async-herald/tap/herald',
+  // Nom du bundle macOS installé dans /Applications.
+  MAC_APP_NAME: 'Async Herald.app',
+  // Première version d'Async Herald Desktop qui sait analyser en ligne de
+  // commande (`--analyze <dossier> --json`). À garder identique au texte de la
+  // vue d'accueil « trop ancienne » dans package.json (viewsWelcome).
+  MIN_DESKTOP_VERSION: '0.2.1',
+  ANALYZE_TIMEOUT_MS: 10 * 60 * 1000,
+  // Une app qui sait analyser écrit sa première ligne `PROGRESS` tout de suite.
+  // Sans aucun signe passé ce délai, c'est une version qui ignore `--analyze`
+  // (elle démarre normalement et ne s'arrête pas) : on l'arrête.
+  STARTUP_TIMEOUT_MS: 20 * 1000,
 };

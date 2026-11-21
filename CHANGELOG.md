@@ -4,6 +4,31 @@ Toutes les modifications notables de l'extension Async Herald.
 
 ---
 
+## [0.0.16] - 2026
+
+### Changé
+- **Analyse en local** : l'extension lance Async Herald Desktop installé sur la machine
+  (`herald-desktop --analyze <dossier> --json`) au lieu d'envoyer les fichiers à l'API.
+  Aucun fichier ne quitte la machine ; la note est la même que dans l'app, l'analyse
+  compte dans son quota et apparaît dans son historique.
+- Résultats par **catégorie** (Sécurité, Qualité, Versioning, DevOps, Pattern, Dépendances,
+  Tests), comme dans l'app, avec la note de chacune et l'écart depuis l'analyse précédente.
+- Progression réelle de l'analyse (étapes envoyées par l'app), annulable.
+- **« Voir dans Async Herald »** ouvre l'app sur le projet.
+
+### Ajouté
+- Vue d'accueil quand l'app est absente ou trop ancienne : télécharger, revérifier,
+  ou indiquer son emplacement (réglage `asyncHerald.desktopPath`).
+- Le dernier rapport du dossier est gardé d'une session à l'autre.
+- Il faut Async Herald Desktop **0.2.1** ou plus récent : une version plus ancienne est
+  signalée avec un bouton « Mettre à jour » (`brew upgrade` si l'app vient de Homebrew).
+
+### Retiré
+- Connexion au compte herald.codes et jeton dans l'extension (le compte est celui de l'app).
+- Onglet **Usage** et export PDF / Markdown depuis l'extension (disponibles dans l'app).
+
+---
+
 ## [0.0.13] - 2026
 
 ### Amélioré

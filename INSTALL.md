@@ -123,8 +123,9 @@ Si vous développez activement l'extension, utilisez le mode watch :
    - `Cmd/Ctrl + Shift + P`
    - Tapez "Async Herald"
    - Vous devriez voir toutes les commandes disponibles :
-     - Async Herald : Lier mon compte
-     - Async Herald : Définir le token manuellement
+     - Async Herald : Analyser le projet
+     - Async Herald : Rechercher Async Herald Desktop
+     - Async Herald : Indiquer l'emplacement d'Async Herald Desktop
      - Async Herald : Se déconnecter
      - Async Herald : Analyser le projet
      - Async Herald : Voir le rapport complet

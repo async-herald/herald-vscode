@@ -4,237 +4,90 @@ Ce document décrit l'interface du panneau **Async Herald**, une webview affich�
 
 ## Vue d'ensemble
 
-Le panneau est une webview HTML personnalisée. Une fois connecté, il s'organise en **3 onglets** :
+L'analyse se fait en local par **Async Herald Desktop** (voir [DESKTOP-CLI.md](DESKTOP-CLI.md)).
+Le panneau dépend donc de la présence de l'app, suivie par le contexte
+`asyncHerald.desktopState` (`missing`, `outdated` ou `ready`) :
 
-- **Analyse** — score, note et problèmes détectés
-- **Usage** — plan, quota et fichiers analysés
-- **Config** — édition de `herald.config.json`
+- **App absente ou trop ancienne** → vue d'accueil (`viewsWelcome`) ;
+- **App prête** → webview en **2 onglets** : **Analyse** et **Config**.
 
-Tant que l'utilisateur n'est pas authentifié, une vue d'accueil (`viewsWelcome`) invite à se connecter.
-
----
-
-## État non connecté
-
-VSCode affiche la vue d'accueil déclarée dans `package.json` :
-
-```
-Bienvenue sur Async Herald !
-
-Analysez la qualité de votre code en quelques secondes.
-
-[🔌 Lier mon compte]
-[🔑 Entrer un token]
-```
-
-**Actions disponibles** :
-- **Lier mon compte** → `async-herald.connect` (flow OAuth, recommandé)
-- **Entrer un token** → `async-herald.setToken` (token manuel)
+L'extension recherche l'app au démarrage, quand le réglage `asyncHerald.desktopPath`
+change, et quand la fenêtre VS Code reprend le focus tant que l'app n'est pas trouvée
+(l'utilisateur vient de l'installer).
 
 ---
 
-## Onglet « Analyse »
+## App absente
 
-C'est l'onglet par défaut une fois connecté.
+```
+Async Herald analyse votre code sur votre machine : aucun fichier n'est envoyé.
 
-### En-tête
-- Icône de déconnexion (survol : « Se déconnecter »)
-- Barre d'onglets : **Analyse** · Usage · Config
+L'analyse passe par l'app Async Herald Desktop. Installez-la, puis revenez ici.
 
-### Actions
-- **Devenir Pro** — ouvre `herald.codes/plans`
-- **Analyser le projet** — lance `async-herald.analyze` (désactivé pendant une analyse en cours)
+[⬇ Télécharger Async Herald Desktop]   → async-herald.downloadDesktop (herald.codes/downloads)
+[↻ J'ai installé l'app]                 → async-herald.checkDesktop
+[📂 Indiquer l'emplacement de l'app]    → async-herald.locateDesktop
+```
 
-### Résultats d'analyse
-Après une analyse :
-- **Score global** sur 100 et **note** (A ≥ 90, B ≥ 80, C ≥ 70, D ≥ 60, sinon F)
-- Nombre de **problèmes détectés** et **lignes analysées**
-- Problèmes regroupés par **famille Herald**, chaque catégorie étant repliable
-- Chaque problème affiche sa **sévérité** (critical / warning / info) et sa **localisation cliquable** : un clic ouvre le fichier à la ligne/colonne exacte
+## App trop ancienne
 
-### Rapport
-- **Voir le rapport complet** — ouvre `herald.codes/reports/{reportId}` dans le navigateur
-- **Télécharger le rapport** — export PDF / Markdown (comptes Pro ; sinon renvoie vers la page Pro)
+Sur macOS, une version inférieure à 0.2.1 (lue dans `Info.plist`) ne sait pas analyser
+en ligne de commande : la vue propose **« Mettre à jour Async Herald Desktop »**.
 
 ---
 
-## Les 6 familles Herald
+## En-tête
 
-Les problèmes sont regroupés par « héraut », chacun couvrant une dimension :
+`Async Herald Desktop 0.2.1 · analyse locale` et un lien **« Ouvrir l'app »**
+(`async-herald.openInDesktop`, ouvre l'app sur le dossier du projet).
 
-| Famille | Libellé | Couleur | Rôle |
-|---------|---------|---------|------|
-| `auriel` | Auriel - Architecture | `#8B5CF6` | Analyse l'architecture du code |
-| `barachiel` | Barachiel - Performance | `#10B981` | Détecte les memory leaks et goulots |
-| `cassiel` | Cassiel - Patterns IA | `#F59E0B` | Identifie le code IA non optimisé |
-| `raziel` | Raziel - Documentation | `#06B6D4` | Vérifie la documentation et les tests |
-| `uriel` | Uriel - Sécurité | `#EF4444` | Traque les failles de sécurité |
-| `zadkiel` | Zadkiel - Qualité | `#3B82F6` | Inspecte la qualité globale du code |
+## Onglet Analyse
 
----
+- Bouton **« Analyser le projet »** (`async-herald.analyze`).
+- Pendant l'analyse : une carte comme celle de l'app, avec une jauge du pourcentage,
+  l'étape réelle envoyée par l'app (message `progress` à la webview, sans la redessiner),
+  le temps écoulé et une barre. Une notification VS Code montre la même progression et
+  permet d'annuler.
+- Résultats :
+  - note sur 100 et lettre (couleur selon la note, comme dans l'app), écart avec l'analyse
+    précédente, problèmes, fichiers, durée ;
+  - **Catégories** : note, nombre de problèmes et barre de la note ; un clic déplie les
+    règles (point de gravité, explication, correction, emplacements cliquables, 8 affichés
+    puis « N autres ») ; les catégories sans rien à examiner sont en dernier ;
+  - **« Relancer l'analyse »** ;
+  - **« Voir dans Async Herald »** ouvre l'app sur le projet.
 
-## Onglet « Usage »
+Le dernier rapport du dossier est gardé dans le `workspaceState` et réaffiché au redémarrage.
 
-Affiche les informations de compte et de quota (récupérées via l'API) :
+## Onglet Config
 
-| Élément | Valeur |
-|---------|--------|
-| **Plan** | `⭐ Pro` ou `Gratuit` |
-| **Analyses restantes (jour)** | `Illimité` (Pro) ou le compte quotidien restant |
-| **Limite de débit** | Requêtes restantes + délai de réinitialisation |
-| **Fichiers à analyser** | Compteur, avec un bouton de rafraîchissement |
-
-Un bouton **Devenir Pro** est présent pour les comptes gratuits. Un raccourci permet d'ouvrir l'onglet **Config**.
-
-Le compteur de fichiers se met à jour automatiquement lorsque `herald.config.json` est créé, modifié ou supprimé.
+Création et édition de `herald.config.json` à la racine (fichiers ignorés, règles
+désactivées, seuils). L'app lit ce fichier à chaque analyse.
 
 ---
 
-## Onglet « Config »
+## Erreurs
 
-Gère le fichier `herald.config.json` à la racine du workspace.
+| Code renvoyé par l'app | Réaction |
+|---|---|
+| `not_signed_in` | « Connectez-vous dans Async Herald Desktop… » + **Ouvrir Async Herald** |
+| `quota` | message de l'app + **Voir les offres** |
+| `cancelled` | rien (annulation par l'utilisateur) |
+| autre, ou app introuvable / sortie illisible | message d'erreur tel quel |
 
-### Sans fichier de config
-- Bouton **Créer herald.config.json**
-- Exemple de configuration et description des options disponibles
-
-### Avec un fichier de config
-Formulaire d'édition :
-- **Fichiers à ignorer** (un par ligne, patterns glob : `*`, `**`, `*.ext`)
-- **Règles désactivées** (IDs séparés par des virgules ; lien « Voir les règles »)
-- **Lignes max par fichier** (`thresholds.maxFileLines`, défaut : 300)
-- **Sauvegarder** (écrit le fichier) et **Éditer JSON** (ouvre le fichier brut)
-
-### Structure du fichier
-
-```json
-{
-  "ignore": [
-    "docs",
-    "src/generated",
-    "**/*.min.js"
-  ],
-  "rules": {
-    "disable": ["eval-usage"]
-  },
-  "thresholds": {
-    "maxFileLines": 500
-  }
-}
-```
-
-| Option | Type | Description |
-|--------|------|-------------|
-| `ignore` | `string[]` | Fichiers et dossiers à exclure (glob) |
-| `rules.disable` | `string[]` | IDs de règles à désactiver |
-| `thresholds.maxFileLines` | `number` | Nombre max de lignes par fichier (défaut : 300) |
-
----
-
-## Flow utilisateur complet
-
-### 1. Connexion
+## Commandes
 
 ```
-1. User ouvre le panneau Async Herald (barre latérale secondaire)
-   ↓
-2. Vue d'accueil : « Lier mon compte » ou « Entrer un token »
-   ↓
-3a. OAuth (recommandé)
-    - Le navigateur s'ouvre sur herald.codes/herald/authorize
-    - User se connecte et autorise
-    - Redirection vers vscode://async.async-herald/auth/callback avec le token
-3b. Token manuel
-    - InputBox : le token doit commencer par « herald_ »
-    - Stockage sécurisé (context.secrets)
-   ↓
-4. Le panneau bascule sur la vue connectée (onglet Analyse)
+> Async Herald : Analyser le projet                          → async-herald.analyze
+> Async Herald : Ouvrir dans Async Herald Desktop             → async-herald.openInDesktop
+> Async Herald : Rechercher Async Herald Desktop              → async-herald.checkDesktop
+> Async Herald : Télécharger Async Herald Desktop             → async-herald.downloadDesktop
+> Async Herald : Indiquer l'emplacement d'Async Herald Desktop → async-herald.locateDesktop
+> Async Herald : Ouvrir le menu                              → async-herald.menu
 ```
 
-### 2. Analyse
+## Réglage
 
-```
-1. User clique « Analyser le projet »
-   ↓
-2. Notification de progression : « Collecte des fichiers... »
-   ↓
-3. L'extension collecte les fichiers et les envoie à l'API Herald
-   ↓
-4. Réception des résultats → onglet Analyse mis à jour
-   ↓
-5. Notification : « Analyse terminée ! Score: XX/100 (Grade) - X problème(s) »
-   ↓
-6. Usage et historique rafraîchis en arrière-plan
-```
-
-En cas de **limite quotidienne atteinte**, une notification propose de **Devenir Pro** (ouvre `herald.codes/plans`).
-
-### 3. Consultation du rapport
-
-```
-1. User clique « Voir le rapport complet »
-   ↓
-2. Le navigateur ouvre herald.codes/reports/{reportId}
-```
-
----
-
-## Messages de notification
-
-| Message | Type | Déclencheur |
-|---------|------|-------------|
-| « Authentification Herald réussie ! » | Info | Connexion OAuth réussie |
-| « Token Herald enregistré avec succès ! » | Info | Token manuel défini |
-| « Voulez-vous vraiment vous déconnecter ? » | Warning (modal) | Déconnexion |
-| « Déconnecté de Herald » | Info | Déconnexion confirmée |
-| « Analyse Herald » / « Collecte des fichiers... » | Progress | Pendant l'analyse |
-| « Analyse terminée ! Score: XX/100 (Grade) - X problème(s) » | Info | Fin d'analyse |
-| « Vous devez vous connecter pour utiliser Herald » | Warning | Analyse sans auth |
-| « Le token ne peut pas être vide » | Error | Token vide |
-| « Le token doit commencer par 'herald_' » | Error | Format token invalide |
-| « Limite quotidienne atteinte ! Passez Pro… » | Warning | Quota gratuit dépassé |
-| « Aucun rapport disponible » | Warning | Clic sur rapport sans analyse |
-| « Rapport téléchargé avec succès ! » | Info | Export PDF/MD réussi |
-| « Compteur mis à jour: X fichier(s) » | Info | Rafraîchissement manuel |
-
----
-
-## Commandes (Cmd/Ctrl + Shift + P)
-
-```
-> Async Herald : Lier mon compte              → async-herald.connect
-> Async Herald : Définir le token manuellement → async-herald.setToken
-> Async Herald : Se déconnecter               → async-herald.disconnect
-> Async Herald : Analyser le projet           → async-herald.analyze
-> Async Herald : Voir le rapport complet      → async-herald.openReport
-> Async Herald : Ouvrir le menu               → async-herald.menu
-```
-
-Commandes internes (non listées dans la palette) : `async-herald.downloadReport`, `async-herald.refreshFileCount`.
-
----
-
-## Persistance des données
-
-### Stockées de manière sécurisée (`context.secrets`)
-- Token Herald (OAuth ou manuel)
-
-### Stockées dans `globalState`
-- ID du dernier rapport (`lastReportId`)
-
-### État en mémoire (provider)
-- Email utilisateur, données d'usage, historique, dernière analyse, compteur de fichiers
-
-Au redémarrage de VSCode, l'extension vérifie le token puis recharge l'email, l'usage, l'historique et le compteur de fichiers via l'API.
-
----
-
-## Configuration technique
-
-| Clé | Valeur |
-|-----|--------|
-| API | `https://api.herald.codes` |
-| Web | `https://herald.codes` |
-| Écran d'autorisation | `herald.codes/herald/authorize` |
-| Redirect URI | `vscode://async.async-herald/auth/callback` |
-| Vue | `asyncHeraldView` (webview) dans `async-herald-secondary` |
+| Réglage | Rôle |
+|---|---|
+| `asyncHerald.desktopPath` | Emplacement de l'app (`.app` ou exécutable) si elle n'est pas à sa place habituelle |
