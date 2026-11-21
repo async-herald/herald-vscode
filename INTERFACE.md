@@ -44,14 +44,17 @@ en ligne de commande : la vue propose **« Mettre à jour Async Herald Desktop �
 ## Onglet Analyse
 
 - Bouton **« Analyser le projet »** (`async-herald.analyze`).
-- Pendant l'analyse : le héraut céleste, la **progression réelle** envoyée par l'app
-  (pourcentage et étape, par message `progress` à la webview, sans la redessiner) et le
-  temps écoulé. Une notification VS Code montre la même progression et permet d'annuler.
+- Pendant l'analyse : une carte comme celle de l'app, avec une jauge du pourcentage,
+  l'étape réelle envoyée par l'app (message `progress` à la webview, sans la redessiner),
+  le temps écoulé et une barre. Une notification VS Code montre la même progression et
+  permet d'annuler.
 - Résultats :
-  - score sur 100 et note, écart avec l'analyse précédente, fichiers analysés, durée ;
-  - **Catégories** (les plus touchées d'abord) : note, nombre de problèmes, barre ; un clic
-    déplie les règles, avec gravité, explication, correction et emplacements cliquables
-    (ouvre le fichier à la ligne) ;
+  - note sur 100 et lettre (couleur selon la note, comme dans l'app), écart avec l'analyse
+    précédente, problèmes, fichiers, durée ;
+  - **Catégories** : note, nombre de problèmes et barre de la note ; un clic déplie les
+    règles (point de gravité, explication, correction, emplacements cliquables, 8 affichés
+    puis « N autres ») ; les catégories sans rien à examiner sont en dernier ;
+  - **« Relancer l'analyse »** ;
   - **« Voir dans Async Herald »** ouvre l'app sur le projet.
 
 Le dernier rapport du dossier est gardé dans le `workspaceState` et réaffiché au redémarrage.
