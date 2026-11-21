@@ -1,42 +1,24 @@
 import * as vscode from 'vscode';
-import { HeraldAuthService } from './auth.service';
-import { UsageResponse, Issue, HistoryEntry } from './herald.service';
 import { HERALD_CONFIG } from './config';
+import { DesktopReport, DesktopIssue, CATEGORY_LABELS, categoryLabel } from './report';
+
+/** État d'Async Herald Desktop sur cette machine. */
+export interface DesktopStatus {
+  state: 'missing' | 'outdated' | 'ready';
+  version?: string;
+  path?: string;
+}
 
 export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
-  private authService: HeraldAuthService;
 
-  private userEmail?: string;
+  private desktop: DesktopStatus = { state: 'missing' };
   private isAnalyzing: boolean = false;
   private hasConfigFile: boolean = false;
   private configData?: { ignore?: string[]; rules?: { disable?: string[] } };
-  private usageData?: UsageResponse;
-  private fileCount?: number;
-  private historyData?: HistoryEntry[];
-  private lastAnalysis?: {
-    score: number;
-    grade: string;
-    issuesCount: number;
-    totalLines: number;
-    heraldFamilies: {
-      auriel: number;
-      barachiel: number;
-      cassiel: number;
-      raziel: number;
-      uriel: number;
-      zadkiel: number;
-    };
-    issues: Issue[];
-    timestamp: Date;
-  };
+  private report?: DesktopReport;
 
-  constructor(
-    private readonly _extensionUri: vscode.Uri,
-    authService: HeraldAuthService
-  ) {
-    this.authService = authService;
-  }
+  constructor(private readonly _extensionUri: vscode.Uri) {}
 
   public resolveWebviewView(
     webviewView: vscode.WebviewView,
@@ -70,17 +52,14 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.onDidReceiveMessage(async (data) => {
       switch (data.type) {
-        case 'disconnect':
-          await vscode.commands.executeCommand('async-herald.disconnect');
-          break;
         case 'analyze':
           await vscode.commands.executeCommand('async-herald.analyze');
           break;
-        case 'openReport':
-          await vscode.commands.executeCommand('async-herald.openReport');
+        case 'openInDesktop':
+          await vscode.commands.executeCommand('async-herald.openInDesktop');
           break;
-        case 'refreshFileCount':
-          await vscode.commands.executeCommand('async-herald.refreshFileCount');
+        case 'downloadDesktop':
+          await vscode.commands.executeCommand('async-herald.downloadDesktop');
           break;
         case 'openFile':
           if (data.file && vscode.workspace.workspaceFolders) {
@@ -156,26 +135,15 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
             }
           }
           break;
-        case 'openProPage':
-          await vscode.env.openExternal(vscode.Uri.parse(`${HERALD_CONFIG.WEB_URL}/plans`));
-          break;
         case 'openRulesList':
           await vscode.env.openExternal(vscode.Uri.parse(`${HERALD_CONFIG.WEB_URL}/criteria`));
-          break;
-        case 'openHistoryReport':
-          if (data.reportId) {
-            await vscode.env.openExternal(vscode.Uri.parse(`${HERALD_CONFIG.WEB_URL}/reports/${data.reportId}`));
-          }
-          break;
-        case 'downloadReport':
-          await vscode.commands.executeCommand('async-herald.downloadReport');
           break;
       }
     });
   }
 
-  public setUserEmail(email?: string) {
-    this.userEmail = email;
+  public setDesktopStatus(status: DesktopStatus) {
+    this.desktop = status;
     this.refresh();
   }
 
@@ -184,53 +152,14 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
     this.refresh();
   }
 
-  public setAnalysisResult(
-    score: number,
-    grade: string,
-    issuesCount: number,
-    totalLines: number,
-    heraldFamilies: {
-      auriel: number;
-      barachiel: number;
-      cassiel: number;
-      raziel: number;
-      uriel: number;
-      zadkiel: number;
-    },
-    issues: Issue[]
-  ) {
+  /** Progression envoyée par l'app pendant l'analyse (sans redessiner le panneau). */
+  public setProgress(percent: number, message: string) {
+    this._view?.webview.postMessage({ type: 'progress', percent, message });
+  }
+
+  public setReport(report: DesktopReport | undefined) {
     this.isAnalyzing = false;
-    const timestamp = new Date();
-    this.lastAnalysis = {
-      score,
-      grade,
-      issuesCount,
-      totalLines,
-      heraldFamilies,
-      issues,
-      timestamp
-    };
-
-    this.refresh();
-  }
-
-  public clearAnalysisResult() {
-    this.lastAnalysis = undefined;
-    this.refresh();
-  }
-
-  public setUsageData(usage: UsageResponse) {
-    this.usageData = usage;
-    this.refresh();
-  }
-
-  public setFileCount(count: number) {
-    this.fileCount = count;
-    this.refresh();
-  }
-
-  public setHistoryData(history: HistoryEntry[]) {
-    this.historyData = history;
+    this.report = report;
     this.refresh();
   }
 
@@ -285,40 +214,25 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private getHeraldLabel(key: string): string {
-    const labels: { [key: string]: string } = {
-      auriel: 'Structure',
-      barachiel: 'Performance',
-      cassiel: 'Patterns IA',
-      raziel: 'Documentation',
-      uriel: 'Sécurité',
-      zadkiel: 'Qualité'
-    };
-    return labels[key] || key;
-  }
-
-  private getHeraldColor(key: string): string {
+  private getCategoryColor(key: string): string {
     const colors: { [key: string]: string } = {
-      auriel: '#8B5CF6',
-      barachiel: '#10B981',
-      cassiel: '#F59E0B',
-      raziel: '#06B6D4',
-      uriel: '#EF4444',
-      zadkiel: '#3B82F6'
+      security: '#EF4444',
+      quality: '#3B82F6',
+      git: '#8B5CF6',
+      devops: '#06B6D4',
+      pattern: '#F59E0B',
+      dependencies: '#10B981',
+      tests: '#EC4899'
     };
     return colors[key] || '#6B7280';
   }
 
-  private getHeraldDescription(key: string): string {
-    const descriptions: { [key: string]: string } = {
-      auriel: 'analyse l\'architecture du code',
-      barachiel: 'détecte les memory leaks et goulots',
-      cassiel: 'identifie le code IA non optimisé',
-      raziel: 'vérifie la documentation et les tests',
-      uriel: 'traque les failles de sécurité',
-      zadkiel: 'inspecte la qualité globale du code'
-    };
-    return descriptions[key] || '';
+  private escape(text: string | undefined): string {
+    return (text ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
   // Héraut céleste doré (identique à HeraldCelestial de l'app web) affiché
@@ -377,101 +291,27 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
     `;
   }
 
-  private groupIssuesByHerald(issues: Array<{
-    id: string;
-    category: string;
-    severity: 'critical' | 'warning' | 'info';
-    rule: string;
-    title: string;
-    message: string;
-    file?: string;
-    line?: number;
-    column?: number;
-    code?: string;
-    suggestion?: string;
-    family?: string;
-  }>): { [key: string]: typeof issues } {
-    const grouped: { [key: string]: typeof issues } = {
-      auriel: [],
-      barachiel: [],
-      cassiel: [],
-      raziel: [],
-      uriel: [],
-      zadkiel: []
-    };
-
-    issues.forEach(issue => {
-      let family = issue.family;
-
-      // Si pas de family, mapper depuis la catégorie
-      if (!family) {
-        const categoryToFamily: { [key: string]: string } = {
-          'architecture': 'auriel',
-          'security': 'uriel',
-          'dependencies': 'uriel',
-          'deadcode': 'barachiel',
-          'duplicates': 'barachiel',
-          'placeholders': 'cassiel',
-          'tests': 'raziel',
-          'commits': 'raziel',
-          'quality': 'zadkiel',
-          'naming': 'zadkiel',
-          'style': 'zadkiel'
-        };
-        family = categoryToFamily[issue.category] || 'zadkiel';
-      }
-
-      if (grouped[family]) {
-        grouped[family].push(issue);
-      }
-    });
-
-    return grouped;
-  }
-
-  private groupDuplicateIssues(issues: Array<{
-    id: string;
-    category: string;
-    severity: 'critical' | 'warning' | 'info';
-    rule: string;
-    title: string;
-    message: string;
-    file?: string;
-    line?: number;
-    column?: number;
-    code?: string;
-    suggestion?: string;
-  }>) {
+  /** Problèmes regroupés par règle : une entrée par règle, avec ses emplacements. */
+  private groupByRule(issues: DesktopIssue[]) {
     const grouped = new Map<string, {
-      issue: typeof issues[0];
-      locations: Array<{ file: string; line?: number; column?: number }>;
+      issue: DesktopIssue;
+      locations: Array<{ file: string; line?: number }>;
     }>();
-
-    issues.forEach(issue => {
-      const key = `${issue.title}|||${issue.message}`;
-
-      if (grouped.has(key)) {
-        const group = grouped.get(key)!;
-        if (issue.file) {
-          group.locations.push({
-            file: issue.file,
-            line: issue.line,
-            column: issue.column
-          });
+    for (const issue of issues) {
+      const group = grouped.get(issue.rule);
+      const location = issue.file && !issue.file.startsWith('(') ? { file: issue.file, line: issue.line } : undefined;
+      if (group) {
+        if (location) {
+          group.locations.push(location);
         }
       } else {
-        grouped.set(key, {
-          issue: issue,
-          locations: issue.file ? [{
-            file: issue.file,
-            line: issue.line,
-            column: issue.column
-          }] : []
-        });
+        grouped.set(issue.rule, { issue, locations: location ? [location] : [] });
       }
-    });
-
-    return Array.from(grouped.values());
+    }
+    const order = { critical: 0, warning: 1, info: 2 };
+    return Array.from(grouped.values()).sort(
+      (x, y) => order[x.issue.severity] - order[y.issue.severity] || y.locations.length - x.locations.length
+    );
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
@@ -1120,48 +960,29 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
 </head>
 <body>
   <div class="container">
-    <!-- User Info -->
+    <!-- Async Herald Desktop -->
     <div class="user-info">
-      <svg class="icon" viewBox="0 0 16 16" fill="currentColor">
-        <path d="M16 7.992C16 3.58 12.416 0 8 0S0 3.58 0 7.992c0 2.43 1.104 4.62 2.832 6.09.016.016.032.016.032.032.144.112.288.224.448.336.08.048.144.111.224.175A7.98 7.98 0 008.016 16a7.98 7.98 0 004.48-1.375c.08-.048.144-.111.224-.16.144-.111.304-.223.448-.335.016-.016.032-.016.032-.032 1.696-1.487 2.8-3.676 2.8-6.106zm-8 7.001c-1.504 0-2.88-.48-4.016-1.279.016-.128.048-.255.080-.383a4.17 4.17 0 01.416-.991c.176-.304.384-.576.64-.816.24-.24.528-.463.816-.639.304-.176.624-.304.976-.4A4.15 4.15 0 018 10.342a4.185 4.185 0 012.928 1.166c.368.368.656.8.864 1.295.112.288.192.592.24.911A7.03 7.03 0 018 14.993zm-2.448-7.4a2.49 2.49 0 01-.208-1.024c0-.351.064-.703.208-1.023.144-.32.336-.607.576-.847.24-.24.528-.431.848-.575.32-.144.672-.208 1.024-.208.368 0 .704.064 1.024.208.32.144.608.336.848.575.24.24.432.528.576.847.144.32.208.672.208 1.023 0 .368-.064.704-.208 1.023a2.84 2.84 0 01-.576.848 2.84 2.84 0 01-.848.575 2.715 2.715 0 01-2.064 0 2.84 2.84 0 01-.848-.575 2.526 2.526 0 01-.56-.848zm7.424 5.306c0-.032-.016-.048-.016-.08a5.22 5.22 0 00-.688-1.406 4.883 4.883 0 00-1.088-1.135 5.207 5.207 0 00-1.04-.608 2.82 2.82 0 00.464-.383 4.2 4.2 0 00.624-.784 3.624 3.624 0 00.528-1.934 3.71 3.71 0 00-.288-1.47 3.799 3.799 0 00-.816-1.199 3.845 3.845 0 00-1.2-.8 3.72 3.72 0 00-1.472-.287 3.72 3.72 0 00-1.472.288 3.631 3.631 0 00-1.2.815 3.84 3.84 0 00-.8 1.199 3.71 3.71 0 00-.288 1.47c0 .352.048.688.144 1.007.096.336.224.64.4.927.16.288.384.544.624.784.144.144.304.271.48.383a5.12 5.12 0 00-1.04.624c-.416.32-.784.703-1.088 1.119a4.999 4.999 0 00-.688 1.406c-.016.032-.016.064-.016.08C1.776 11.636.992 9.91.992 7.992.992 4.14 4.144.991 8 .991s7.008 3.149 7.008 7.001a6.96 6.96 0 01-2.032 4.907z"/>
-      </svg>
-      <span class="user-email">${this.userEmail || 'Connecté'}</span>
-      <svg class="disconnect-icon" viewBox="0 0 16 16" fill="currentColor" onclick="disconnect()" title="Se déconnecter">
-        <path d="M7 1L1 1v14h6v-2H3V3h4V1zm2 3l5 4-5 4V9H4V7h5V4z"/>
-      </svg>
+      <img class="icon" src="${webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'aile.svg'))}" alt="">
+      <span class="user-email">Async Herald Desktop${this.desktop.version ? ' ' + this.escape(this.desktop.version) : ''} · analyse locale</span>
+      <button class="button-link" onclick="openInDesktop()" title="Ouvrir Async Herald">Ouvrir l'app</button>
     </div>
 
     <!-- Tabs -->
     <div class="tabs">
       <div class="tab active" onclick="switchTab('analysis')">Analyse</div>
-      <div class="tab" onclick="switchTab('usage')">Usage</div>
       <div class="tab" onclick="switchTab('config')">Config</div>
     </div>
 
     <!-- Tab Content: Analysis -->
     <div class="tab-content active" id="tab-analysis">
-
-      ${this.usageData && !this.usageData.canAnalyze ? `
-      <div class="limit-reached">
-        <span>Limite quotidienne atteinte (${this.usageData.daily.used}/${this.usageData.daily.limit})</span>
-        <span class="limit-reset">Réinitialisation dans ${this.usageData.daily.resetsIn}</span>
-      </div>
-      <button class="button button-primary" onclick="openProPage()">
-        <svg class="icon" viewBox="0 0 16 16" fill="currentColor">
-          <path d="M8.5 1.5l1.5 3 3.5.5-2.5 2.5.5 3.5-3-1.5-3 1.5.5-3.5L3 5l3.5-.5 2-3z"/>
-        </svg>
-        Devenir Pro
-      </button>
-      ` : `
       <button class="button button-secondary ${this.isAnalyzing ? 'disabled' : ''}" onclick="analyze()" ${this.isAnalyzing ? 'disabled' : ''}>
         <svg class="icon" viewBox="0 0 16 16" fill="currentColor">
           <path d="M8 1l6.25 11H1.75L8 1z"/>
         </svg>
-        ${this.isAnalyzing ? 'Analyse en cours...' : (this.lastAnalysis ? 'Nouvelle analyse' : 'Analyser le projet')}
+        ${this.isAnalyzing ? 'Analyse en cours...' : (this.report ? 'Nouvelle analyse' : 'Analyser le projet')}
       </button>
-      `}
 
-    ${this.lastAnalysis ? `
+    ${this.report && !this.isAnalyzing ? `
     <!-- Results -->
     <div class="results">
       <div class="result-header">Résultats de l'analyse</div>
@@ -1169,73 +990,78 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
       <div class="result-item">
         <span class="result-label">Score global</span>
         <span class="result-value">
-          <span class="score-badge" style="background: ${this.getScoreColor(this.lastAnalysis.score)}; color: white;">
-            ${this.lastAnalysis.score}/100
+          <span class="score-badge" style="background: ${this.getScoreColor(this.report.score)}; color: white;">
+            ${this.report.score}/100
           </span>
-          <span class="grade">${this.lastAnalysis.grade}</span>
+          <span class="grade">${this.escape(this.report.grade)}</span>
         </span>
       </div>
 
+      ${this.report.previousScore !== undefined ? `
       <div class="result-item">
-        <span class="result-label">Lignes de code</span>
-        <span class="result-value">${this.lastAnalysis.totalLines.toLocaleString()}</span>
+        <span class="result-label">Analyse précédente</span>
+        <span class="result-value">${this.report.previousScore}/100 (${this.report.score - this.report.previousScore >= 0 ? '+' : ''}${this.report.score - this.report.previousScore})</span>
+      </div>
+      ` : ''}
+
+      <div class="result-item">
+        <span class="result-label">Fichiers analysés</span>
+        <span class="result-value">${this.report.files.toLocaleString('fr-FR')}</span>
+      </div>
+
+      <div class="result-item">
+        <span class="result-label">Durée</span>
+        <span class="result-value">${(this.report.durationMs / 1000).toFixed(1).replace('.', ',')} s · aucun fichier envoyé</span>
       </div>
     </div>
 
-    ${!this.isAnalyzing ? `
-    <!-- Familles -->
+    <!-- Catégories -->
     <div class="results">
-      <div class="result-header">Familles</div>
+      <div class="result-header">Catégories</div>
 
       ${(() => {
-        const groupedIssues = this.groupIssuesByHerald(this.lastAnalysis.issues);
-        // Calculer le nombre de problèmes uniques par famille
-        const uniqueIssuesCounts: { [key: string]: number } = {};
-        Object.keys(this.lastAnalysis.heraldFamilies).forEach(key => {
-          uniqueIssuesCounts[key] = this.groupDuplicateIssues(groupedIssues[key] || []).length;
-        });
-        const maxIssues = Math.max(...Object.values(uniqueIssuesCounts), 1);
-        return Object.entries(this.lastAnalysis.heraldFamilies)
-          .sort((a, b) => {
-            const issuesA = uniqueIssuesCounts[a[0]] || 0;
-            const issuesB = uniqueIssuesCounts[b[0]] || 0;
-            return issuesB - issuesA; // Tri décroissant (plus de problèmes en premier)
-          })
-          .map(([key, score]) => {
-          const heraldIssues = groupedIssues[key] || [];
-          const uniqueCount = uniqueIssuesCounts[key] || 0;
-          const issuePercent = (uniqueCount / maxIssues) * 100;
-          const barColor = this.getHeraldColor(key);
+        const report = this.report!;
+        const ids = Object.keys(CATEGORY_LABELS);
+        report.categories.forEach(c => { if (!ids.includes(c.id)) { ids.push(c.id); } });
+        const groups = new Map(ids.map(id => [id, this.groupByRule(report.issues.filter(i => i.category === id))]));
+        const maxRules = Math.max(...Array.from(groups.values()).map(g => g.length), 1);
+        return ids
+          .map(id => ({ id, category: report.categories.find(c => c.id === id), rules: groups.get(id) ?? [] }))
+          .sort((x, y) => y.rules.length - x.rules.length)
+          .map(({ id, category, rules }) => {
+          const issueCount = report.issues.filter(i => i.category === id).length;
+          const applicable = category?.applicable ?? false;
           return `
             <div class="category-item">
-              <div class="category-header" onclick="toggleCategory('${key}')">
+              <div class="category-header" onclick="toggleCategory('${id}')">
                 <div class="category-header-left">
-                  <svg class="category-expand-icon" id="expand-${key}" viewBox="0 0 16 16" fill="currentColor">
+                  <svg class="category-expand-icon" id="expand-${id}" viewBox="0 0 16 16" fill="currentColor">
                     <path d="M6 4l4 4-4 4V4z"/>
                   </svg>
-                  <span class="category-name">${this.getHeraldLabel(key)}</span>
-                  <span style="margin-left: 8px; font-size: 11px; color: #888;">${score}/100</span>
+                  <span class="category-name">${this.escape(category?.label ?? categoryLabel(id))}</span>
+                  <span style="margin-left: 8px; font-size: 11px; color: #888;">${applicable && category ? `${this.escape(category.grade)} · ${category.score}/100` : 'rien à examiner'}</span>
                 </div>
                 <div class="category-header-right">
-                  <span class="category-issue-count">${uniqueCount} problème${uniqueCount !== 1 ? 's' : ''}</span>
+                  <span class="category-issue-count">${issueCount} problème${issueCount !== 1 ? 's' : ''}</span>
                 </div>
               </div>
               <div class="category-bar">
-                <div class="category-bar-fill" style="width: ${issuePercent}%; background: ${barColor}"></div>
+                <div class="category-bar-fill" style="width: ${(rules.length / maxRules) * 100}%; background: ${this.getCategoryColor(id)}"></div>
               </div>
-              <div class="category-issues" id="issues-${key}">
-                ${uniqueCount > 0 ? this.groupDuplicateIssues(heraldIssues).map(group => `
+              <div class="category-issues" id="issues-${id}">
+                ${rules.length > 0 ? rules.map(group => `
                   <div class="issue-item">
                     <div class="issue-header">
                       <span class="severity-badge severity-${group.issue.severity}">${group.issue.severity}</span>
-                      <span class="issue-title">${group.issue.title}</span>
+                      <span class="issue-title">${this.escape(group.issue.title)}</span>
                     </div>
-                    <div class="issue-message">${group.issue.message}</div>
+                    ${group.issue.explanation ? `<div class="issue-message">${this.escape(group.issue.explanation)}</div>` : ''}
+                    ${group.issue.fix ? `<div class="issue-message"><strong>Correction :</strong> ${this.escape(group.issue.fix)}</div>` : ''}
                     ${group.locations.length > 0 ? `
                       <div class="issue-locations">
                         ${group.locations.map(loc => `
-                          <div class="issue-location clickable" onclick="openFile('${loc.file.replace(/'/g, "\\'")}', ${loc.line || 0}, ${loc.column || 0})">
-                            ${loc.file}${loc.line ? ':' + loc.line : ''}${loc.column ? ':' + loc.column : ''}
+                          <div class="issue-location clickable" onclick="openFile('${this.escape(loc.file).replace(/'/g, "\\'")}', ${loc.line || 0}, 0)">
+                            ${this.escape(loc.file)}${loc.line ? ':' + loc.line : ''}
                           </div>
                         `).join('')}
                       </div>
@@ -1248,173 +1074,41 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
         }).join('');
       })()}
     </div>
-    ` : ''}
 
-    <button class="button button-primary ${this.isAnalyzing ? 'disabled' : ''}" onclick="openReport()" ${this.isAnalyzing ? 'disabled' : ''}>
+    <button class="button button-primary" onclick="openInDesktop()">
       <svg class="icon" viewBox="0 0 16 16" fill="currentColor">
         <path d="M9 2L7 2 7 7 2 7 2 9 7 9 7 14 9 14 9 9 14 9 14 7 9 7z"/>
       </svg>
-      Voir le rapport complet
-    </button>
-    <button class="button button-secondary ${this.isAnalyzing ? 'disabled' : ''}" onclick="${this.usageData?.isPremium ? 'downloadReport()' : 'openProPage()'}" ${this.isAnalyzing ? 'disabled' : ''}>
-      <svg class="icon" viewBox="0 0 16 16" fill="currentColor">
-        <path d="M8 1v9.5l-3-3-.7.7L8 11.9l3.7-3.7-.7-.7-3 3V1H8zM1 14h14v1H1v-1z"/>
-      </svg>
-      Télécharger le rapport ${!this.usageData?.isPremium ? '<span style="opacity: 0.6; font-size: 10px;">Pro</span>' : ''}
+      Voir dans Async Herald
     </button>
     ` : ''}
 
       ${this.isAnalyzing ? `
-      <!-- Loading State : héraut céleste sur fond doré -->
+      <!-- Loading State : héraut céleste, progression envoyée par l'app -->
       <div class="loading-container">
         <div class="herald-celestial">${this.getCelestialSVG()}</div>
         <p class="loading-text">
           <span class="herald-name" id="herald-name">Herald</span>
-          <span id="herald-description">déploie son aura sur votre code…</span>
+          <span id="herald-description">prépare l'analyse locale…</span>
         </p>
         <div class="progress-bar">
-          <div class="progress-bar-fill" id="progress-fill"></div>
+          <div class="progress-bar-fill" id="progress-fill" style="width: 0%"></div>
         </div>
         <div class="timer">
-          <span id="elapsed-time">0.0s</span>
+          <span id="elapsed-time">0,0 s</span>
         </div>
       </div>
       <script>
         (function() {
-          const FAMILY_STEPS = [
-            { name: 'Structure', description: 'range l\\'arborescence et traque les cycles' },
-            { name: 'Sécurité', description: 'traque les failles et les fuites' },
-            { name: 'Patterns IA', description: 'repère le code généré non optimisé' },
-            { name: 'Performance', description: 'détecte les goulots et memory leaks' },
-            { name: 'Qualité', description: 'inspecte la qualité globale du code' },
-            { name: 'Documentation', description: 'vérifie la doc et la couverture de tests' },
-          ];
-
-          let currentIndex = 0;
           const startTime = Date.now();
-          const nameEl = document.getElementById('herald-name');
-          const descEl = document.getElementById('herald-description');
-          const fillEl = document.getElementById('progress-fill');
           const timeEl = document.getElementById('elapsed-time');
-
-          function updateStep() {
-            const step = FAMILY_STEPS[currentIndex];
-            if (nameEl) nameEl.textContent = step.name;
-            if (descEl) descEl.textContent = step.description;
-          }
-
-          function updateProgress() {
-            const elapsed = Date.now() - startTime;
-            const progress = Math.min(100, (elapsed / 21000) * 100);
-            if (fillEl) fillEl.style.width = progress + '%';
-            if (timeEl) timeEl.textContent = (elapsed / 1000).toFixed(1) + 's';
-          }
-
-          updateStep();
-
-          const stepInterval = setInterval(() => {
-            currentIndex = (currentIndex + 1) % FAMILY_STEPS.length;
-            updateStep();
-          }, 2600);
-
-          const timerInterval = setInterval(updateProgress, 100);
-
-          window.stopHeraldAnimation = function() {
-            clearInterval(stepInterval);
-            clearInterval(timerInterval);
-          };
+          const timer = setInterval(function() {
+            if (timeEl) timeEl.textContent = ((Date.now() - startTime) / 1000).toFixed(1).replace('.', ',') + ' s';
+          }, 100);
+          window.stopHeraldAnimation = function() { clearInterval(timer); };
         })();
       </script>
       ` : ''}
-      ${this.fileCount !== undefined ? `
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 12px; font-size: 12px; color: #888;">
-        <span>📁 ${this.fileCount} fichier${this.fileCount > 1 ? 's' : ''} à analyser</span>
-        <button onclick="refreshFileCount()" style="background: none; border: none; cursor: pointer; padding: 4px; font-size: 14px; opacity: 0.6; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'" title="Rafraîchir le compteur">
-          🔄
-        </button>
-      </div>
-      ${this.fileCount > 500 ? `
-      <div style="margin-top: 8px;">
-        <button class="button button-secondary" onclick="switchTab('config')" style="font-size: 11px; padding: 4px 8px;">
-          ⚙️ Optimiser les exclusions
-        </button>
-      </div>
-      ` : ''}
-      ` : ''}
-    </div>
-
-    <!-- Tab Content: Usage -->
-    <div class="tab-content" id="tab-usage">
-      ${this.usageData ? `
-      <div class="results">
-        <div class="result-header">Statut</div>
-
-        <div class="result-item">
-          <span class="result-label">Type de compte</span>
-          <span class="result-value">${this.usageData.isPremium ? '⭐ Pro' : 'Gratuit'}</span>
-        </div>
-
-        <div class="result-item">
-          <span class="result-label">Peut analyser</span>
-          <span class="result-value">${this.usageData.canAnalyze ? '✓ Oui' : '✗ Non'}</span>
-        </div>
-      </div>
-
-      ${!this.usageData.isPremium ? `
-      <button class="button button-primary" onclick="openProPage()">
-        <svg class="icon" viewBox="0 0 16 16" fill="currentColor">
-          <path d="M8.5 1.5l1.5 3 3.5.5-2.5 2.5.5 3.5-3-1.5-3 1.5.5-3.5L3 5l3.5-.5 2-3z"/>
-        </svg>
-        Devenir Pro
-      </button>
-      ` : ''}
-
-      <div class="results">
-        <div class="result-header">Quota journalier</div>
-
-        <div class="result-item">
-          <span class="result-label">Utilisées</span>
-          <span class="result-value">${this.usageData.isPremium ? 'Illimité' : `${this.usageData.daily.used} / ${this.usageData.daily.limit}`}</span>
-        </div>
-
-        <div class="result-item">
-          <span class="result-label">Restantes</span>
-          <span class="result-value">${this.usageData.isPremium ? 'Illimité' : this.usageData.daily.remaining}</span>
-        </div>
-
-        <div class="result-item">
-          <span class="result-label">Réinitialisation</span>
-          <span class="result-value">${this.usageData.daily.resetsIn}</span>
-        </div>
-      </div>
-
-      <div class="results">
-        <div class="result-header">Limite de taux</div>
-
-        <div class="result-item">
-          <span class="result-label">Utilisées</span>
-          <span class="result-value">${this.usageData.rateLimit.used} / ${this.usageData.rateLimit.limit}</span>
-        </div>
-
-        <div class="result-item">
-          <span class="result-label">Restantes</span>
-          <span class="result-value">${this.usageData.rateLimit.remaining}</span>
-        </div>
-
-        <div class="result-item">
-          <span class="result-label">Réinitialisation</span>
-          <span class="result-value">${this.usageData.rateLimit.resetsIn}</span>
-        </div>
-      </div>
-      ` : `
-      <div class="results">
-        <div class="result-header">Chargement...</div>
-
-        <div class="config-description">
-          Récupération des données d'utilisation...
-        </div>
-      </div>
-      `}
     </div>
 
     <!-- Tab Content: Config -->
@@ -1525,21 +1219,26 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
   <script>
     const vscode = acquireVsCodeApi();
 
-    function disconnect() {
-      vscode.postMessage({ type: 'disconnect' });
-    }
-
     function analyze() {
       vscode.postMessage({ type: 'analyze' });
     }
 
-    function openReport() {
-      vscode.postMessage({ type: 'openReport' });
+    function openInDesktop() {
+      vscode.postMessage({ type: 'openInDesktop' });
     }
 
-    function refreshFileCount() {
-      vscode.postMessage({ type: 'refreshFileCount' });
-    }
+    // Progression envoyée par Async Herald Desktop pendant l'analyse.
+    window.addEventListener('message', function(event) {
+      const data = event.data;
+      if (data && data.type === 'progress') {
+        const fill = document.getElementById('progress-fill');
+        const name = document.getElementById('herald-name');
+        const desc = document.getElementById('herald-description');
+        if (fill) fill.style.width = data.percent + '%';
+        if (name) name.textContent = data.percent + ' %';
+        if (desc && data.message) desc.textContent = data.message;
+      }
+    });
 
     function toggleCategory(categoryKey) {
       const issuesDiv = document.getElementById('issues-' + categoryKey);
@@ -1609,21 +1308,10 @@ export class AsyncHeraldWebviewProvider implements vscode.WebviewViewProvider {
       vscode.postMessage({ type: 'openConfig' });
     }
 
-    function openProPage() {
-      vscode.postMessage({ type: 'openProPage' });
-    }
-
     function openRulesList() {
       vscode.postMessage({ type: 'openRulesList' });
     }
 
-    function openHistoryReport(reportId) {
-      vscode.postMessage({ type: 'openHistoryReport', reportId: reportId });
-    }
-
-    function downloadReport() {
-      vscode.postMessage({ type: 'downloadReport' });
-    }
   </script>
 </body>
 </html>`;

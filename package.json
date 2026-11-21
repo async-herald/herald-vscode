@@ -1,8 +1,8 @@
 {
   "name": "async-herald",
   "displayName": "Async Herald",
-  "description": "Analysez la qualité de votre code avec Async Herald directement depuis VSCode",
-  "version": "0.0.14",
+  "description": "Analysez la qualité de votre code en local avec Async Herald Desktop, directement depuis VSCode",
+  "version": "0.1.0",
   "publisher": "async",
   "icon": "media/icon.png",
   "engines": {
@@ -14,7 +14,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/itsasync/async-herald"
+    "url": "https://github.com/async-herald/herald-vscode"
   },
   "activationEvents": [
     "*"
@@ -37,47 +37,53 @@
           "name": "Async Herald",
           "icon": "media/aile.svg",
           "type": "webview",
-          "when": "asyncHerald.authenticated"
+          "when": "asyncHerald.desktopState == 'ready'"
         },
         {
           "id": "asyncHeraldWelcome",
           "name": "Async Herald",
           "icon": "media/aile.svg",
-          "when": "!asyncHerald.authenticated"
+          "when": "asyncHerald.desktopState != 'ready'"
         }
       ]
     },
     "viewsWelcome": [
       {
         "view": "asyncHeraldWelcome",
-        "contents": "Bienvenue sur Async Herald !\n\nAnalysez la qualité de votre code en quelques secondes.\n\n[$(plug) Lier mon compte](command:async-herald.connect)\n\n[$(key) Entrer un token](command:async-herald.setToken)"
+        "when": "asyncHerald.desktopState != 'outdated'",
+        "contents": "Async Herald analyse votre code sur votre machine : aucun fichier n'est envoyé.\n\nL'analyse passe par l'app **Async Herald Desktop**. Installez-la, puis revenez ici.\n\n[$(cloud-download) Télécharger Async Herald Desktop](command:async-herald.downloadDesktop)\n\n[$(refresh) J'ai installé l'app](command:async-herald.checkDesktop)\n\n[$(folder-opened) Indiquer l'emplacement de l'app](command:async-herald.locateDesktop)"
+      },
+      {
+        "view": "asyncHeraldWelcome",
+        "when": "asyncHerald.desktopState == 'outdated'",
+        "contents": "Votre version d'Async Herald Desktop est trop ancienne pour analyser depuis VS Code.\n\n[$(cloud-download) Mettre à jour Async Herald Desktop](command:async-herald.downloadDesktop)\n\n[$(refresh) J'ai mis à jour l'app](command:async-herald.checkDesktop)"
       }
     ],
     "commands": [
-      {
-        "command": "async-herald.connect",
-        "title": "Async Herald : Lier mon compte",
-        "icon": "${account}"
-      },
-      {
-        "command": "async-herald.disconnect",
-        "title": "Async Herald : Se déconnecter",
-        "icon": "$(sign-out)"
-      },
-      {
-        "command": "async-herald.setToken",
-        "title": "Async Herald : Définir le token manuellement",
-        "icon": "$(key)"
-      },
       {
         "command": "async-herald.analyze",
         "title": "Async Herald : Analyser le projet",
         "icon": "media/aile.svg"
       },
       {
-        "command": "async-herald.openReport",
-        "title": "Async Herald : Voir le rapport complet",
-        "icon": "$(open-preview)"
+        "command": "async-herald.openInDesktop",
+        "title": "Async Herald : Ouvrir dans Async Herald Desktop",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "async-herald.checkDesktop",
+        "title": "Async Herald : Rechercher Async Herald Desktop",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "async-herald.downloadDesktop",
+        "title": "Async Herald : Télécharger Async Herald Desktop",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "async-herald.locateDesktop",
+        "title": "Async Herald : Indiquer l'emplacement d'Async Herald Desktop",
+        "icon": "$(folder-opened)"
       },
       {
         "command": "async-herald.menu",
@@ -93,6 +99,16 @@
           "when": "resourceLangId != ''"
         }
       ]
+    },
+    "configuration": {
+      "title": "Async Herald",
+      "properties": {
+        "asyncHerald.desktopPath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Emplacement d'Async Herald Desktop si l'app n'est pas à sa place habituelle : le `.app` sur macOS, ou l'exécutable `herald-desktop`. Laissez vide pour la recherche automatique."
+        }
+      }
     }
   },
   "scripts": {
